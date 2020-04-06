@@ -1,4 +1,4 @@
-﻿//========= Copyright 2014, Valve Corporation, All rights reserved. ===========
+//======= Copyright (c) Valve Corporation, All rights reserved. ===============
 //
 // Purpose: Displays 2d content on a large virtual screen.
 //
@@ -8,162 +8,165 @@ using UnityEngine;
 using System.Collections;
 using Valve.VR;
 
-public class SteamVR_Overlay : MonoBehaviour
+namespace Valve.VR
 {
-	public Texture texture;
-	public bool curved = true;
-	public bool antialias = true;
-	public bool highquality = true;
-	public float scale = 3.0f;			// size of overlay view
-	public float distance = 1.25f;		// distance from surface
-	public float alpha = 1.0f;			// opacity 0..1
+    public class SteamVR_Overlay : MonoBehaviour
+    {
+        public Texture texture;
 
-	public Vector4 uvOffset = new Vector4(0, 0, 1, 1);
-	public Vector2 mouseScale = new Vector2(1, 1);
-	public Vector2 curvedRange = new Vector2(1, 2);
+        [Tooltip("Size of overlay view.")]
+        public float scale = 3.0f;
 
-	public VROverlayInputMethod inputMethod = VROverlayInputMethod.None;
+        [Tooltip("Distance from surface.")]
+        public float distance = 1.25f;
 
-	static public SteamVR_Overlay instance { get; private set; }
+        [Tooltip("Opacity"), Range(0.0f, 1.0f)]
+        public float alpha = 1.0f;
 
-	static public string key { get { return "unity:" + Application.companyName + "." + Application.productName; } }
+        public Vector4 uvOffset = new Vector4(0, 0, 1, 1);
+        public Vector2 mouseScale = new Vector2(1, 1);
 
-	private ulong handle = OpenVR.k_ulOverlayHandleInvalid;
+        public VROverlayInputMethod inputMethod = VROverlayInputMethod.None;
 
-	void OnEnable()
-	{
-		var vr = SteamVR.instance;
-		if (vr != null && vr.overlay != null)
-		{
-			var error = vr.overlay.CreateOverlay(key, gameObject.name, ref handle);
-			if (error != EVROverlayError.None)
-			{
-				Debug.Log(vr.overlay.GetOverlayErrorNameFromEnum(error));
-				enabled = false;
-				return;
-			}
-		}
+        static public SteamVR_Overlay instance { get; private set; }
 
-		SteamVR_Overlay.instance = this;
-	}
+        static public string key { get { return "unity:" + Application.companyName + "." + Application.productName; } }
 
-	void OnDisable()
-	{
-		if (handle != OpenVR.k_ulOverlayHandleInvalid)
-		{
-			if (SteamVR.active)
-			{
-				var vr = SteamVR.instance;
-				if (vr.overlay != null)
-					vr.overlay.DestroyOverlay(handle);
-			}
+        private ulong handle = OpenVR.k_ulOverlayHandleInvalid;
 
-			handle = OpenVR.k_ulOverlayHandleInvalid;
-		}
+        void OnEnable()
+        {
+            var overlay = OpenVR.Overlay;
+            if (overlay != null)
+            {
+                var error = overlay.CreateOverlay(key, gameObject.name, ref handle);
+                if (error != EVROverlayError.None)
+                {
+                    Debug.Log("<b>[SteamVR]</b> " + overlay.GetOverlayErrorNameFromEnum(error));
+                    enabled = false;
+                    return;
+                }
+            }
 
-		SteamVR_Overlay.instance = null;
-	}
+            SteamVR_Overlay.instance = this;
+        }
 
-	public void UpdateOverlay(SteamVR vr)
-	{
-		if (texture != null)
-		{
-			var error = vr.overlay.ShowOverlay(handle);
-			if (error == EVROverlayError.InvalidHandle || error == EVROverlayError.UnknownOverlay)
-			{
-				if (vr.overlay.FindOverlay(key, ref handle) != EVROverlayError.None)
-					return;
-			}
+        void OnDisable()
+        {
+            if (handle != OpenVR.k_ulOverlayHandleInvalid)
+            {
+                var overlay = OpenVR.Overlay;
+                if (overlay != null)
+                {
+                    overlay.DestroyOverlay(handle);
+                }
 
-			var tex = new Texture_t();
-			tex.handle = texture.GetNativeTexturePtr();
-			tex.eType = vr.graphicsAPI;
-			tex.eColorSpace = EColorSpace.Auto;
-            vr.overlay.SetOverlayTexture(handle, ref tex);
+                handle = OpenVR.k_ulOverlayHandleInvalid;
+            }
 
-			vr.overlay.SetOverlayAlpha(handle, alpha);
-			vr.overlay.SetOverlayWidthInMeters(handle, scale);
-			vr.overlay.SetOverlayAutoCurveDistanceRangeInMeters(handle, curvedRange.x, curvedRange.y);
+            SteamVR_Overlay.instance = null;
+        }
 
-			var textureBounds = new VRTextureBounds_t();
-			textureBounds.uMin = (0 + uvOffset.x) * uvOffset.z;
-			textureBounds.vMin = (1 + uvOffset.y) * uvOffset.w;
-			textureBounds.uMax = (1 + uvOffset.x) * uvOffset.z;
-			textureBounds.vMax = (0 + uvOffset.y) * uvOffset.w;
-			vr.overlay.SetOverlayTextureBounds(handle, ref textureBounds);
+        public void UpdateOverlay()
+        {
+            var overlay = OpenVR.Overlay;
+            if (overlay == null)
+                return;
 
-			var vecMouseScale = new HmdVector2_t();
-			vecMouseScale.v = new float[] { mouseScale.x, mouseScale.y };
-			vr.overlay.SetOverlayMouseScale(handle, ref vecMouseScale);
+            if (texture != null)
+            {
+                var error = overlay.ShowOverlay(handle);
+                if (error == EVROverlayError.InvalidHandle || error == EVROverlayError.UnknownOverlay)
+                {
+                    if (overlay.FindOverlay(key, ref handle) != EVROverlayError.None)
+                        return;
+                }
 
-			var vrcam = SteamVR_Render.Top();
-			if (vrcam != null && vrcam.origin != null)
-			{
-				var offset = new SteamVR_Utils.RigidTransform(vrcam.origin, transform);
-				offset.pos.x /= vrcam.origin.localScale.x;
-				offset.pos.y /= vrcam.origin.localScale.y;
-				offset.pos.z /= vrcam.origin.localScale.z;
+                var tex = new Texture_t();
+                tex.handle = texture.GetNativeTexturePtr();
+                tex.eType = SteamVR.instance.textureType;
+                tex.eColorSpace = EColorSpace.Auto;
+                overlay.SetOverlayTexture(handle, ref tex);
 
-				offset.pos.z += distance;
+                overlay.SetOverlayAlpha(handle, alpha);
+                overlay.SetOverlayWidthInMeters(handle, scale);
 
-				var t = offset.ToHmdMatrix34();
-				vr.overlay.SetOverlayTransformAbsolute(handle, SteamVR_Render.instance.trackingSpace, ref t);
-			}
+                var textureBounds = new VRTextureBounds_t();
+                textureBounds.uMin = (0 + uvOffset.x) * uvOffset.z;
+                textureBounds.vMin = (1 + uvOffset.y) * uvOffset.w;
+                textureBounds.uMax = (1 + uvOffset.x) * uvOffset.z;
+                textureBounds.vMax = (0 + uvOffset.y) * uvOffset.w;
+                overlay.SetOverlayTextureBounds(handle, ref textureBounds);
 
-			vr.overlay.SetOverlayInputMethod(handle, inputMethod);
+                var vecMouseScale = new HmdVector2_t();
+                vecMouseScale.v0 = mouseScale.x;
+                vecMouseScale.v1 = mouseScale.y;
+                overlay.SetOverlayMouseScale(handle, ref vecMouseScale);
 
-			if (curved || antialias)
-				highquality = true;
+                var vrcam = SteamVR_Render.Top();
+                if (vrcam != null && vrcam.origin != null)
+                {
+                    var offset = new SteamVR_Utils.RigidTransform(vrcam.origin, transform);
+                    offset.pos.x /= vrcam.origin.localScale.x;
+                    offset.pos.y /= vrcam.origin.localScale.y;
+                    offset.pos.z /= vrcam.origin.localScale.z;
 
-			if (highquality)
-			{
-				vr.overlay.SetHighQualityOverlay(handle);
-				vr.overlay.SetOverlayFlag(handle, VROverlayFlags.Curved, curved);
-				vr.overlay.SetOverlayFlag(handle, VROverlayFlags.RGSS4X, antialias);
-			}
-			else if (vr.overlay.GetHighQualityOverlay() == handle)
-			{
-				vr.overlay.SetHighQualityOverlay(OpenVR.k_ulOverlayHandleInvalid);
-			}
-		}
-		else
-		{
-			vr.overlay.HideOverlay(handle);
-		}
-	}
+                    offset.pos.z += distance;
 
-	public bool PollNextEvent(ref VREvent_t pEvent)
-	{
-		var vr = SteamVR.instance;
-		return vr.overlay.PollNextOverlayEvent(handle, ref pEvent);
-	}
+                    var t = offset.ToHmdMatrix34();
+                    overlay.SetOverlayTransformAbsolute(handle, SteamVR.settings.trackingSpace, ref t);
+                }
 
-	public struct IntersectionResults
-	{
-		public Vector3 point;
-		public Vector3 normal;
-		public Vector2 UVs;
-		public float distance;
-	}
+                overlay.SetOverlayInputMethod(handle, inputMethod);
+            }
+            else
+            {
+                overlay.HideOverlay(handle);
+            }
+        }
 
-	public bool ComputeIntersection(Vector3 source, Vector3 direction, ref IntersectionResults results)
-	{
-		var vr = SteamVR.instance;
+        public bool PollNextEvent(ref VREvent_t pEvent)
+        {
+            var overlay = OpenVR.Overlay;
+            if (overlay == null)
+                return false;
 
-		var input = new VROverlayIntersectionParams_t();
-		input.eOrigin = SteamVR_Render.instance.trackingSpace;
-		input.vSource.v = new float[] { source.x, source.y, -source.z };
-		input.vDirection.v = new float[] { direction.x, direction.y, -direction.z };
+            var size = (uint)System.Runtime.InteropServices.Marshal.SizeOf(typeof(Valve.VR.VREvent_t));
+            return overlay.PollNextOverlayEvent(handle, ref pEvent, size);
+        }
 
-		var output = new VROverlayIntersectionResults_t();
-		if (!vr.overlay.ComputeOverlayIntersection(handle, ref input, ref output))
-			return false;
+        public struct IntersectionResults
+        {
+            public Vector3 point;
+            public Vector3 normal;
+            public Vector2 UVs;
+            public float distance;
+        }
 
-		results.point = new Vector3(output.vPoint.v[0], output.vPoint.v[1], -output.vPoint.v[2]);
-		results.normal = new Vector3(output.vNormal.v[0], output.vNormal.v[1], -output.vNormal.v[2]);
-		results.UVs = new Vector2(output.vUVs.v[0], output.vUVs.v[1]);
-		results.distance = output.fDistance;
-		return true;
-	}
+        public bool ComputeIntersection(Vector3 source, Vector3 direction, ref IntersectionResults results)
+        {
+            var overlay = OpenVR.Overlay;
+            if (overlay == null)
+                return false;
+
+            var input = new VROverlayIntersectionParams_t();
+            input.eOrigin = SteamVR.settings.trackingSpace;
+            input.vSource.v0 = source.x;
+            input.vSource.v1 = source.y;
+            input.vSource.v2 = -source.z;
+            input.vDirection.v0 = direction.x;
+            input.vDirection.v1 = direction.y;
+            input.vDirection.v2 = -direction.z;
+
+            var output = new VROverlayIntersectionResults_t();
+            if (!overlay.ComputeOverlayIntersection(handle, ref input, ref output))
+                return false;
+
+            results.point = new Vector3(output.vPoint.v0, output.vPoint.v1, -output.vPoint.v2);
+            results.normal = new Vector3(output.vNormal.v0, output.vNormal.v1, -output.vNormal.v2);
+            results.UVs = new Vector2(output.vUVs.v0, output.vUVs.v1);
+            results.distance = output.fDistance;
+            return true;
+        }
+    }
 }
-

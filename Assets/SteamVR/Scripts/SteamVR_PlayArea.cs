@@ -1,281 +1,278 @@
-﻿//========= Copyright 2015, Valve Corporation, All rights reserved. ===========
+﻿//======= Copyright (c) Valve Corporation, All rights reserved. ===============
 //
 // Purpose: Draws different sized room-scale play areas for targeting content
 //
 //=============================================================================
 
 using UnityEngine;
+using UnityEngine.Rendering;
 using System.Collections;
 using Valve.VR;
 
-[ExecuteInEditMode, RequireComponent(typeof(MeshRenderer), typeof(MeshFilter))]
-public class SteamVR_PlayArea : MonoBehaviour
+namespace Valve.VR
 {
-	public float borderThickness = 0.15f;
-	public float wireframeHeight = 2.0f;
-	public bool drawWireframeWhenSelectedOnly = false;
-	public bool drawInGame = true;
+    [ExecuteInEditMode, RequireComponent(typeof(MeshRenderer), typeof(MeshFilter))]
+    public class SteamVR_PlayArea : MonoBehaviour
+    {
+        public float borderThickness = 0.15f;
+        public float wireframeHeight = 2.0f;
+        public bool drawWireframeWhenSelectedOnly = false;
+        public bool drawInGame = true;
 
-	public enum Size
-	{
-		Calibrated,
-		_400x300,
-		_300x225,
-		_200x150
-	}
+        public enum Size
+        {
+            Calibrated,
+            _400x300,
+            _300x225,
+            _200x150
+        }
 
-	public Size size;
-	public Color color = Color.cyan;
+        public Size size;
+        public Color color = Color.cyan;
 
-	[HideInInspector]
-	public Vector3[] vertices;
+        [HideInInspector]
+        public Vector3[] vertices;
 
-	public static bool GetBounds( Size size, ref HmdQuad_t pRect )
-	{
-		if (size == Size.Calibrated)
-		{
-			var error = EVRInitError.None;
-			if (!SteamVR.active)
-			{
-				OpenVR.Init(ref error, EVRApplicationType.VRApplication_Other);
-				if (error != EVRInitError.None)
-					return false;
-			}
+        public static bool GetBounds(Size size, ref HmdQuad_t pRect)
+        {
+            if (size == Size.Calibrated)
+            {
+                bool temporarySession = false;
+                if (Application.isEditor && Application.isPlaying == false)
+                    temporarySession = SteamVR.InitializeTemporarySession();
 
-			var pChaperone = OpenVR.GetGenericInterface(OpenVR.IVRChaperone_Version, ref error);
-			if (pChaperone == System.IntPtr.Zero || error != EVRInitError.None)
-			{
-				if (!SteamVR.active)
-					OpenVR.Shutdown();
-				return false;
-			}
+                var chaperone = OpenVR.Chaperone;
+                bool success = (chaperone != null) && chaperone.GetPlayAreaRect(ref pRect);
+                if (!success)
+                    Debug.LogWarning("<b>[SteamVR]</b> Failed to get Calibrated Play Area bounds!  Make sure you have tracking first, and that your space is calibrated.");
 
-			var chaperone = new CVRChaperone(pChaperone);
+                if (temporarySession)
+                    SteamVR.ExitTemporarySession();
 
-			bool success = chaperone.GetPlayAreaRect( ref pRect );
-			if (!success)
-				Debug.LogWarning("Failed to get Calibrated Play Area bounds!  Make sure you have tracking first, and that your space is calibrated.");
+                return success;
+            }
+            else
+            {
+                try
+                {
+                    var str = size.ToString().Substring(1);
+                    var arr = str.Split(new char[] { 'x' }, 2);
 
-			if (!SteamVR.active)
-				OpenVR.Shutdown();
+                    // convert to half size in meters (from cm)
+                    var x = float.Parse(arr[0]) / 200;
+                    var z = float.Parse(arr[1]) / 200;
 
-			return success;
-		}
-		else
-		{
-			try
-			{
-				var str = size.ToString().Substring(1);
-				var arr = str.Split(new char[] {'x'}, 2);
-				// convert to half size in meters (from cm)
-				var x = float.Parse(arr[0]) / 200;
-				var z = float.Parse(arr[1]) / 200;
-				pRect.vCorners = new HmdVector3_t[ 4 ];
-				pRect.vCorners[ 0 ].v = new float[ 3 ] { x, 0, z };
-				pRect.vCorners[ 1 ].v = new float[ 3 ] { x, 0, -z };
-				pRect.vCorners[ 2 ].v = new float[ 3 ] { -x, 0, -z };
-				pRect.vCorners[ 3 ].v = new float[ 3 ] { -x, 0, z };
-				return true;
-			}
-			catch {}
-		}
+                    pRect.vCorners0.v0 = x;
+                    pRect.vCorners0.v1 = 0;
+                    pRect.vCorners0.v2 = -z;
 
-		return false;
-	}
+                    pRect.vCorners1.v0 = -x;
+                    pRect.vCorners1.v1 = 0;
+                    pRect.vCorners1.v2 = -z;
 
-	public void BuildMesh()
-	{
-		var rect = new HmdQuad_t();
-		if ( !GetBounds( size, ref rect ) )
-			return;
+                    pRect.vCorners2.v0 = -x;
+                    pRect.vCorners2.v1 = 0;
+                    pRect.vCorners2.v2 = z;
 
-		var corners = rect.vCorners;
+                    pRect.vCorners3.v0 = x;
+                    pRect.vCorners3.v1 = 0;
+                    pRect.vCorners3.v2 = z;
 
-		vertices = new Vector3[corners.Length * 2];
-		for (int i = 0; i < corners.Length; i++)
-		{
-			var v = corners[i].v;
-			vertices[i] = new Vector3(v[0], 0.01f, v[2]);
-		}
+                    return true;
+                }
+                catch { }
+            }
 
-		if (borderThickness == 0.0f)
-		{
-			GetComponent<MeshFilter>().mesh = null;
-			return;
-		}
+            return false;
+        }
 
-		for (int i = 0; i < corners.Length; i++)
-		{
-			int next = (i + 1) % corners.Length;
-			int prev = (i + corners.Length - 1) % corners.Length;
+        public void BuildMesh()
+        {
+            var rect = new HmdQuad_t();
+            if (!GetBounds(size, ref rect))
+                return;
 
-			var nextSegment = (vertices[next] - vertices[i]).normalized;
-			var prevSegment = (vertices[prev] - vertices[i]).normalized;
+            var corners = new HmdVector3_t[] { rect.vCorners0, rect.vCorners1, rect.vCorners2, rect.vCorners3 };
 
-			var vert = vertices[i];
-			vert += Vector3.Cross(nextSegment, Vector3.up) * borderThickness;
-			vert += Vector3.Cross(prevSegment, Vector3.down) * borderThickness;
+            vertices = new Vector3[corners.Length * 2];
+            for (int i = 0; i < corners.Length; i++)
+            {
+                var c = corners[i];
+                vertices[i] = new Vector3(c.v0, 0.01f, c.v2);
+            }
 
-			vertices[corners.Length + i] = vert;
-		}
+            if (borderThickness == 0.0f)
+            {
+                GetComponent<MeshFilter>().mesh = null;
+                return;
+            }
 
-		var triangles = new int[]
-		{
-			0, 1, 4,
-			1, 5, 4,
-			1, 2, 5,
-			2, 6, 5,
-			2, 3, 6,
-			3, 7, 6,
-			3, 0, 7,
-			0, 4, 7
-		};
+            for (int i = 0; i < corners.Length; i++)
+            {
+                int next = (i + 1) % corners.Length;
+                int prev = (i + corners.Length - 1) % corners.Length;
 
-		var uv = new Vector2[]
-		{
-			new Vector2(0.0f, 0.0f),
-			new Vector2(1.0f, 0.0f),
-			new Vector2(0.0f, 0.0f),
-			new Vector2(1.0f, 0.0f),
-			new Vector2(0.0f, 1.0f),
-			new Vector2(1.0f, 1.0f),
-			new Vector2(0.0f, 1.0f),
-			new Vector2(1.0f, 1.0f)
-		};
+                var nextSegment = (vertices[next] - vertices[i]).normalized;
+                var prevSegment = (vertices[prev] - vertices[i]).normalized;
 
-		var colors = new Color[]
-		{
-			color,
-			color,
-			color,
-			color,
-			new Color(color.r, color.g, color.b, 0.0f),
-			new Color(color.r, color.g, color.b, 0.0f),
-			new Color(color.r, color.g, color.b, 0.0f),
-			new Color(color.r, color.g, color.b, 0.0f)
-		};
+                var vert = vertices[i];
+                vert += Vector3.Cross(nextSegment, Vector3.up) * borderThickness;
+                vert += Vector3.Cross(prevSegment, Vector3.down) * borderThickness;
 
-		var mesh = new Mesh();
-		GetComponent<MeshFilter>().mesh = mesh;
-		mesh.vertices = vertices;
-		mesh.uv = uv;
-		mesh.colors = colors;
-		mesh.triangles = triangles;
+                vertices[corners.Length + i] = vert;
+            }
 
-		var renderer = GetComponent<MeshRenderer>();
-		renderer.material = Resources.GetBuiltinResource<Material>("Sprites-Default.mat");
-		renderer.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
-		renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-		renderer.receiveShadows = false;
-		renderer.useLightProbes = false;
-	}
+            var triangles = new int[]
+            {
+            0, 4, 1,
+            1, 4, 5,
+            1, 5, 2,
+            2, 5, 6,
+            2, 6, 3,
+            3, 6, 7,
+            3, 7, 0,
+            0, 7, 4
+            };
+
+            var uv = new Vector2[]
+            {
+            new Vector2(0.0f, 0.0f),
+            new Vector2(1.0f, 0.0f),
+            new Vector2(0.0f, 0.0f),
+            new Vector2(1.0f, 0.0f),
+            new Vector2(0.0f, 1.0f),
+            new Vector2(1.0f, 1.0f),
+            new Vector2(0.0f, 1.0f),
+            new Vector2(1.0f, 1.0f)
+            };
+
+            var colors = new Color[]
+            {
+            color,
+            color,
+            color,
+            color,
+            new Color(color.r, color.g, color.b, 0.0f),
+            new Color(color.r, color.g, color.b, 0.0f),
+            new Color(color.r, color.g, color.b, 0.0f),
+            new Color(color.r, color.g, color.b, 0.0f)
+            };
+
+            var mesh = new Mesh();
+            GetComponent<MeshFilter>().mesh = mesh;
+            mesh.vertices = vertices;
+            mesh.uv = uv;
+            mesh.colors = colors;
+            mesh.triangles = triangles;
+
+            var renderer = GetComponent<MeshRenderer>();
+            renderer.material = new Material(Shader.Find("Sprites/Default"));
+            renderer.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            renderer.lightProbeUsage = LightProbeUsage.Off;
+        }
 
 #if UNITY_EDITOR
-	Hashtable values;
-	void Update()
-	{
-		if (!Application.isPlaying)
-		{
-			var fields = GetType().GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+        Hashtable values;
+        void Update()
+        {
+            if (!Application.isPlaying)
+            {
+                var fields = GetType().GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
 
-			bool rebuild = false;
+                bool rebuild = false;
 
-			if (values == null || (borderThickness != 0.0f && GetComponent<MeshFilter>().sharedMesh == null))
-			{
-				rebuild = true;
-			}
-			else
-			{
-				foreach (var f in fields)
-				{
-					if (!values.Contains(f) || !f.GetValue(this).Equals(values[f]))
-					{
-						rebuild = true;
-						break;
-					}
-				}
-			}
+                if (values == null || (borderThickness != 0.0f && GetComponent<MeshFilter>().sharedMesh == null))
+                {
+                    rebuild = true;
+                }
+                else
+                {
+                    foreach (var f in fields)
+                    {
+                        if (!values.Contains(f) || !f.GetValue(this).Equals(values[f]))
+                        {
+                            rebuild = true;
+                            break;
+                        }
+                    }
+                }
 
-			if (rebuild)
-			{
-				BuildMesh();
+                if (rebuild)
+                {
+                    BuildMesh();
 
-				values = new Hashtable();
-				foreach (var f in fields)
-					values[f] = f.GetValue(this);
-			}
-		}
-	}
+                    values = new Hashtable();
+                    foreach (var f in fields)
+                        values[f] = f.GetValue(this);
+                }
+            }
+        }
 #endif
 
-	void OnDrawGizmos()
-	{
-		if (!drawWireframeWhenSelectedOnly)
-			DrawWireframe();
-	}
+        void OnDrawGizmos()
+        {
+            if (!drawWireframeWhenSelectedOnly)
+                DrawWireframe();
+        }
 
-	void OnDrawGizmosSelected()
-	{
-		if (drawWireframeWhenSelectedOnly)
-			DrawWireframe();
-	}
+        void OnDrawGizmosSelected()
+        {
+            if (drawWireframeWhenSelectedOnly)
+                DrawWireframe();
+        }
 
-	public void DrawWireframe()
-	{
-		if (vertices == null || vertices.Length == 0)
-			return;
+        public void DrawWireframe()
+        {
+            if (vertices == null || vertices.Length == 0)
+                return;
 
-		var offset = transform.TransformVector(Vector3.up * wireframeHeight);
-		for (int i = 0; i < 4; i++)
-		{
-			int next = (i + 1) % 4;
+            var offset = transform.TransformVector(Vector3.up * wireframeHeight);
+            for (int i = 0; i < 4; i++)
+            {
+                int next = (i + 1) % 4;
 
-			var a = transform.TransformPoint(vertices[i]);
-			var b = a + offset;
-			var c = transform.TransformPoint(vertices[next]);
-			var d = c + offset;
-			Gizmos.DrawLine(a, b);
-			Gizmos.DrawLine(a, c);
-			Gizmos.DrawLine(b, d);
-		}
-	}
+                var a = transform.TransformPoint(vertices[i]);
+                var b = a + offset;
+                var c = transform.TransformPoint(vertices[next]);
+                var d = c + offset;
+                Gizmos.DrawLine(a, b);
+                Gizmos.DrawLine(a, c);
+                Gizmos.DrawLine(b, d);
+            }
+        }
 
-	public void OnEnable()
-	{
-		if (Application.isPlaying)
-		{
-			GetComponent<MeshRenderer>().enabled = drawInGame;
+        public void OnEnable()
+        {
+            if (Application.isPlaying)
+            {
+                GetComponent<MeshRenderer>().enabled = drawInGame;
 
-			// No need to remain enabled at runtime.
-			// Anyone that wants to change properties at runtime
-			// should call BuildMesh themselves.
-			enabled = false;
+                // No need to remain enabled at runtime.
+                // Anyone that wants to change properties at runtime
+                // should call BuildMesh themselves.
+                enabled = false;
 
-			// If we want the configured bounds of the user,
-			// we need to wait for tracking.
-			if (drawInGame && size == Size.Calibrated)
-				StartCoroutine("UpdateBounds");
-		}
-	}
+                // If we want the configured bounds of the user,
+                // we need to wait for tracking.
+                if (drawInGame && size == Size.Calibrated)
+                    StartCoroutine(UpdateBounds());
+            }
+        }
 
-	IEnumerator UpdateBounds()
-	{
-		GetComponent<MeshFilter>().mesh = null; // clear existing
+        IEnumerator UpdateBounds()
+        {
+            GetComponent<MeshFilter>().mesh = null; // clear existing
 
-		var vr = SteamVR.instance;
-		if (vr == null)
-			yield break;
+            var chaperone = OpenVR.Chaperone;
+            if (chaperone == null)
+                yield break;
 
-		var error = EVRInitError.None;
-		var pChaperone = OpenVR.GetGenericInterface(OpenVR.IVRChaperone_Version, ref error);
-		if (pChaperone == System.IntPtr.Zero || error != EVRInitError.None)
-			yield break;
+            while (chaperone.GetCalibrationState() != ChaperoneCalibrationState.OK)
+                yield return null;
 
-		var chaperone = new CVRChaperone(pChaperone);
-		while (chaperone.GetCalibrationState() != ChaperoneCalibrationState.OK)
-			yield return null;
-
-		BuildMesh();
-	}
+            BuildMesh();
+        }
+    }
 }
-
