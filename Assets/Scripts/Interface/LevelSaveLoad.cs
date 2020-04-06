@@ -22,15 +22,15 @@ namespace LevelBuilder.Interface
             var savePath = Path.Combine(saveDir, "Level.json");
 
 #if UNITY_EDITOR
-            EditorApplication.playmodeStateChanged += () =>
+            EditorApplication.playModeStateChanged += stateChange =>
             {
-                if (!EditorApplication.isPlayingOrWillChangePlaymode && EditorApplication.isPlaying)
+                if (stateChange == PlayModeStateChange.ExitingPlayMode)
                 {
                     Debug.Log("Saving level");
                     
                     File.WriteAllText(savePath, Target.Serialize().ToString());
                 }
-                else if (EditorApplication.isPlaying)
+                else if (stateChange == PlayModeStateChange.EnteredPlayMode)
                 {
                     Debug.Log("Loading level");
 
