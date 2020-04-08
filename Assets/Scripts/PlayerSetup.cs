@@ -9,23 +9,36 @@ namespace LevelBuilderVR
     {
         public bool ShowController = true;
 
+        private bool _leftSetup;
+        private bool _rightSetup;
+
         [UsedImplicitly]
         private void Update()
         {
-            var finishedSetup = false;
-
             foreach (var hand in Player.instance.hands)
             {
                 if (hand == null) continue;
                 if (hand.mainRenderModel == null) continue;
 
+                switch (hand.handType)
+                {
+                    case SteamVR_Input_Sources.LeftHand:
+                        if (_leftSetup) continue;
+                        _leftSetup = true;
+                        break;
+                    case SteamVR_Input_Sources.RightHand:
+                        if (_rightSetup) continue;
+                        _rightSetup = true;
+                        break;
+                    default:
+                        continue;
+                }
+
                 hand.SetSkeletonRangeOfMotion(ShowController ? EVRSkeletalMotionRange.WithController : EVRSkeletalMotionRange.WithoutController);
                 hand.ShowController(ShowController);
-
-                finishedSetup = true;
             }
 
-            if (finishedSetup)
+            if (_leftSetup && _rightSetup)
             {
                 enabled = false;
             }
