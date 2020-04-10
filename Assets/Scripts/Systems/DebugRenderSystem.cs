@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace LevelBuilderVR.Systems
 {
-    public class DebugRender : ComponentSystem
+    public class DebugRenderSystem : ComponentSystem
     {
         protected override void OnUpdate()
         {

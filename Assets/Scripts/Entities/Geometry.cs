@@ -1,6 +1,11 @@
 ﻿using System;
+using LevelBuilderVR.Behaviours;
 using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Rendering;
+using Unity.Transforms;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace LevelBuilderVR.Entities
 { 
@@ -19,31 +24,26 @@ namespace LevelBuilderVR.Entities
             _sLevelArchetype = em.CreateArchetype(
                 typeof(Identifier),
                 typeof(Level),
-                typeof(WithinLevel));
+                typeof(WithinLevel),
+                typeof(LocalToWorld));
 
             _sRoomArchetype = em.CreateArchetype(
                 typeof(Identifier),
                 typeof(Room),
-                typeof(WithinLevel));
+                typeof(WithinLevel),
+                typeof(RenderMesh),
+                typeof(LocalToWorld),
+                typeof(RenderBounds));
 
             _sHalfEdgeArchetype = em.CreateArchetype(
                 typeof(Identifier),
                 typeof(HalfEdge),
-                typeof(WithinLevel),
-                typeof(WithinRoom));
+                typeof(WithinLevel));
 
             _sVertexArchetype = em.CreateArchetype(
                 typeof(Identifier),
                 typeof(Vertex),
                 typeof(WithinLevel));
-        }
-
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void InitializeAfterScene()
-        {
-            var em = World.DefaultGameObjectInjectionWorld.EntityManager;
-
-            em.CreateLevelTemplate();
         }
 
         public static Entity CreateLevelTemplate(this EntityManager em)
@@ -76,6 +76,11 @@ namespace LevelBuilderVR.Entities
 
             em.AssignNewIdentifier(level);
 
+            em.SetComponentData(level, new LocalToWorld
+            {
+                Value = float4x4.identity
+            });
+
             em.SetSharedComponentData(level, new WithinLevel(level));
 
             return level;
@@ -105,6 +110,25 @@ namespace LevelBuilderVR.Entities
                 });
             }
 
+            // Rendering
+
+            em.SetComponentData(room, new LocalToWorld
+            {
+                Value = float4x4.identity
+            });
+
+            var mesh = new Mesh();
+
+            mesh.MarkDynamic();
+
+            em.SetSharedComponentData(room, new RenderMesh
+            {
+                mesh = mesh,
+                material = Object.FindObjectOfType<HybridLevel>().Material
+            });
+
+            em.AddComponent<DirtyMesh>(room);
+
             return room;
         }
 
@@ -118,10 +142,9 @@ namespace LevelBuilderVR.Entities
 
             em.SetSharedComponentData(halfEdge, withinLevelData);
 
-            em.SetSharedComponentData(halfEdge, new WithinRoom(room));
-
             em.SetComponentData(halfEdge, new HalfEdge
             {
+                Room = room,
                 Vertex0 = vertex0,
                 Vertex1 = vertex1
             });

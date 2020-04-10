@@ -48,39 +48,21 @@ namespace LevelBuilderVR
 
     }
 
-    public struct WithinRoom : ISharedComponentData, IEquatable<WithinRoom>
+    public interface IFlatFace
     {
-        public readonly Entity Room;
-
-        public WithinRoom(Entity room)
-        {
-            Room = room;
-        }
-
-        public bool Equals(WithinRoom other)
-        {
-            return Room.Equals(other.Room);
-        }
-
-        public override bool Equals(object obj)
-        {
-            return obj is WithinRoom other && Equals(other);
-        }
-
-        public override int GetHashCode()
-        {
-            return Room.GetHashCode();
-        }
+        float Y { get; }
     }
 
-    public struct FlatFloor : IComponentData
+    public struct FlatFloor : IComponentData, IFlatFace
     {
         public float Y;
+        float IFlatFace.Y => Y;
     }
 
-    public struct FlatCeiling : IComponentData
+    public struct FlatCeiling : IComponentData, IFlatFace
     {
         public float Y;
+        float IFlatFace.Y => Y;
     }
 
     public struct SlopeVertex
@@ -89,18 +71,33 @@ namespace LevelBuilderVR
         public float Y;
     }
 
-    public struct SlopedFloor : IComponentData
+    public interface ISlopedFace
     {
-        public SlopeVertex Anchor0;
-        public SlopeVertex Anchor1;
-        public SlopeVertex Anchor2;
+        SlopeVertex Anchor0 { get; }
+        SlopeVertex Anchor1 { get; }
+        SlopeVertex Anchor2 { get; }
     }
 
-    public struct SlopedCeiling : IComponentData
+    public struct SlopedFloor : IComponentData, ISlopedFace
     {
         public SlopeVertex Anchor0;
         public SlopeVertex Anchor1;
         public SlopeVertex Anchor2;
+
+        SlopeVertex ISlopedFace.Anchor0 => Anchor0;
+        SlopeVertex ISlopedFace.Anchor1 => Anchor1;
+        SlopeVertex ISlopedFace.Anchor2 => Anchor2;
+    }
+
+    public struct SlopedCeiling : IComponentData, ISlopedFace
+    {
+        public SlopeVertex Anchor0;
+        public SlopeVertex Anchor1;
+        public SlopeVertex Anchor2;
+
+        SlopeVertex ISlopedFace.Anchor0 => Anchor0;
+        SlopeVertex ISlopedFace.Anchor1 => Anchor1;
+        SlopeVertex ISlopedFace.Anchor2 => Anchor2;
     }
 
     public struct Vertex : IComponentData
@@ -111,6 +108,8 @@ namespace LevelBuilderVR
 
     public struct HalfEdge : IComponentData
     {
+        public Entity Room;
+
         /// <summary>
         /// Left vertex of the edge.
         /// </summary>
@@ -120,6 +119,11 @@ namespace LevelBuilderVR
         /// Right vertex of the edge.
         /// </summary>
         public Entity Vertex1;
+    }
+
+    public struct DirtyMesh : IComponentData
+    {
+
     }
 
     public struct Selected : IComponentData
