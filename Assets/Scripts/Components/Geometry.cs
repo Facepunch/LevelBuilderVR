@@ -1,5 +1,6 @@
 ﻿using System;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace LevelBuilderVR
 {
@@ -51,6 +52,12 @@ namespace LevelBuilderVR
     public interface IFlatFace
     {
         float Y { get; }
+    }
+
+    public struct Plane
+    {
+        public float3 Point;
+        public float3 Normal;
     }
 
     public struct FlatFloor : IComponentData, IFlatFace
@@ -113,12 +120,12 @@ namespace LevelBuilderVR
         /// <summary>
         /// Left vertex of the edge.
         /// </summary>
-        public Entity Vertex0;
+        public Entity Vertex;
 
         /// <summary>
-        /// Right vertex of the edge.
+        /// Next <see cref="HalfEdge"/>, on the right of this one.
         /// </summary>
-        public Entity Vertex1;
+        public Entity Next;
     }
 
     public struct DirtyMesh : IComponentData

@@ -5,6 +5,7 @@ using Unity.Mathematics;
 using Unity.Rendering;
 using Unity.Transforms;
 using UnityEngine;
+using UnityEngine.Rendering;
 using Object = UnityEngine.Object;
 
 namespace LevelBuilderVR.Entities
@@ -46,21 +47,19 @@ namespace LevelBuilderVR.Entities
                 typeof(WithinLevel));
         }
 
-        public static Entity CreateLevelTemplate(this EntityManager em)
+        public static Entity CreateLevelTemplate(this EntityManager em, float3 size)
         {
             var level = em.CreateLevel();
 
-            var corner0 = em.CreateVertex(level, -4f, -6f);
-            var corner1 = em.CreateVertex(level, 4f, -6f);
-            var corner2 = em.CreateVertex(level, -4f, 6f);
-            var corner3 = em.CreateVertex(level, 4f, 6f);
+            var room = em.CreateRoom(level, 0f, size.y);
 
-            var room = em.CreateRoom(level, 0f, 3f);
+            var halfWidth = size.x * 0.5f;
+            var halfDepth = size.z * 0.5f;
 
-            em.CreateHalfEdge(room, corner0, corner1);
-            em.CreateHalfEdge(room, corner1, corner3);
-            em.CreateHalfEdge(room, corner3, corner2);
-            em.CreateHalfEdge(room, corner2, corner0);
+            var prev = em.CreateHalfEdge(room, em.CreateVertex(level, -halfWidth, -halfDepth));
+            prev = em.InsertHalfEdge(prev, em.CreateVertex(level, -halfWidth, halfDepth));
+            prev = em.InsertHalfEdge(prev, em.CreateVertex(level, halfWidth, halfDepth));
+            prev = em.InsertHalfEdge(prev, em.CreateVertex(level, halfWidth, -halfDepth));
 
             return level;
         }
@@ -124,7 +123,9 @@ namespace LevelBuilderVR.Entities
             em.SetSharedComponentData(room, new RenderMesh
             {
                 mesh = mesh,
-                material = Object.FindObjectOfType<HybridLevel>().Material
+                material = Object.FindObjectOfType<HybridLevel>().Material,
+                castShadows = ShadowCastingMode.Off,
+                receiveShadows = true
             });
 
             em.AddComponent<DirtyMesh>(room);
@@ -132,7 +133,7 @@ namespace LevelBuilderVR.Entities
             return room;
         }
 
-        public static Entity CreateHalfEdge(this EntityManager em, Entity room, Entity vertex0, Entity vertex1)
+        public static Entity CreateHalfEdge(this EntityManager em, Entity room, Entity vertex)
         {
             var halfEdge = em.CreateEntity(_sHalfEdgeArchetype);
 
@@ -141,15 +142,35 @@ namespace LevelBuilderVR.Entities
             var withinLevelData = em.GetSharedComponentData<WithinLevel>(room);
 
             em.SetSharedComponentData(halfEdge, withinLevelData);
-
             em.SetComponentData(halfEdge, new HalfEdge
             {
                 Room = room,
-                Vertex0 = vertex0,
-                Vertex1 = vertex1
+                Vertex = vertex,
+                Next = halfEdge
             });
 
+            em.AddComponent<DirtyMesh>(room);
+
             return halfEdge;
+        }
+
+        public static Entity InsertHalfEdge(this EntityManager em, Entity prev, Entity vertex)
+        {
+            var prevHalfEdge = em.GetComponentData<HalfEdge>(prev);
+            var halfEdgeEntity = em.CreateHalfEdge(prevHalfEdge.Room, vertex);
+
+            var next = prevHalfEdge.Next;
+            prevHalfEdge.Next = halfEdgeEntity;
+
+            em.SetComponentData(prev, prevHalfEdge);
+            em.SetComponentData(halfEdgeEntity, new HalfEdge
+            {
+                Room = prevHalfEdge.Room,
+                Vertex = vertex,
+                Next = next
+            });
+
+            return halfEdgeEntity;
         }
 
         public static Entity CreateVertex(this EntityManager em, Entity level, float x, float z)

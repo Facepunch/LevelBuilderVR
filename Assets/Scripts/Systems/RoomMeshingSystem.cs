@@ -27,7 +27,7 @@ namespace LevelBuilderVR.Systems
                 .ToEntityQuery();
         }
 
-        private static bool GetFaceDescription<TFlat, TSloped>(Entity roomEntity, ComponentDataFromEntity<Vertex> getVertex, ComponentDataFromEntity<TFlat> getFlat, ComponentDataFromEntity<TSloped> getSloped, out float3 a, out float3 b, out float3 c)
+        private static bool GetFacePlane<TFlat, TSloped>(Entity roomEntity, ComponentDataFromEntity<Vertex> getVertex, ComponentDataFromEntity<TFlat> getFlat, ComponentDataFromEntity<TSloped> getSloped, out Plane plane)
             where TFlat : struct, IComponentData, IFlatFace
             where TSloped : struct, IComponentData, ISlopedFace
         {
@@ -35,9 +35,11 @@ namespace LevelBuilderVR.Systems
             {
                 var flatFloor = getFlat[roomEntity];
 
-                a = new float3(0f, flatFloor.Y, 0f);
-                b = new float3(1f, flatFloor.Y, 0f);
-                c = new float3(0f, flatFloor.Y, 1f);
+                plane = new Plane
+                {
+                    Normal = new float3(0f, 1f, 0f),
+                    Point = new float3(0f, flatFloor.Y, 0f)
+                };
 
                 return true;
             }
@@ -50,29 +52,39 @@ namespace LevelBuilderVR.Systems
                 var vertex1 = getVertex[slopedFloor.Anchor1.Vertex];
                 var vertex2 = getVertex[slopedFloor.Anchor2.Vertex];
 
-                a = new float3(vertex0.X, slopedFloor.Anchor0.Y, vertex0.Z);
-                b = new float3(vertex1.X, slopedFloor.Anchor1.Y, vertex1.Z);
-                c = new float3(vertex2.X, slopedFloor.Anchor2.Y, vertex2.Z);
+                var a = new float3(vertex0.X, slopedFloor.Anchor0.Y, vertex0.Z);
+                var b = new float3(vertex1.X, slopedFloor.Anchor1.Y, vertex1.Z);
+                var c = new float3(vertex2.X, slopedFloor.Anchor2.Y, vertex2.Z);
+
+                var n = math.normalize(math.cross(b - a, c - a));
+
+                plane = new Plane
+                {
+                    Normal = n.y < 0f ? -n : n,
+                    Point = (a + b + c) / 3f
+                };
 
                 return true;
             }
 
-            a = default(float3);
-            b = default(float3);
-            c = default(float3);
+            plane = new Plane
+            {
+                Normal = new float3(0f, 1f, 0f),
+                Point = float3.zero
+            };
 
             return false;
         }
 
-        private static float GetFaceY(ref float3 a, ref float3 b, ref float3 c, float x, float z)
+        private static float3 VertexToFloat3(in Plane plane, Vertex vertex)
         {
-            // TODO
-            return a.y;
-        }
+            // ReSharper disable once CompareOfFloatsByEqualityOperator
+            if (plane.Normal.y == 1f)
+            {
+                return new float3(vertex.X, plane.Point.y, vertex.Z);
+            }
 
-        private static float3 VertexToFloat3(ref float3 a, ref float3 b, ref float3 c, Vertex vertex)
-        {
-            return new float3(vertex.X, GetFaceY(ref a, ref b, ref c, vertex.X, vertex.Z), vertex.Z);
+            return math.dot(plane.Normal, plane.Point - new float3(vertex.X, 0f, vertex.Z)) / plane.Normal.y;
         }
 
         protected override void OnUpdate()
@@ -90,69 +102,157 @@ namespace LevelBuilderVR.Systems
             {
                 var vertices = new NativeArray<float3>(MaxVertices, Allocator.TempJob);
                 var normals = new NativeArray<float3>(MaxVertices, Allocator.TempJob);
+                var uvs = new NativeArray<float2>(MaxVertices, Allocator.TempJob);
                 var indices = new NativeArray<int>(MaxIndices, Allocator.TempJob);
 
                 foreach (var roomEntity in changedRooms)
                 {
                     PostUpdateCommands.RemoveComponent<DirtyMesh>(roomEntity);
 
-                    var hasFloor = GetFaceDescription(roomEntity, getVertex, getFlatFloor, getSlopedFloor,
-                        out var floor0, out var floor1, out var floor2);
-                    var hasCeiling = GetFaceDescription(roomEntity, getVertex, getFlatCeiling, getSlopedCeiling,
-                        out var ceiling0, out var ceiling1, out var ceiling2);
+                    var hasFloor = GetFacePlane(roomEntity, getVertex, getFlatFloor, getSlopedFloor,
+                        out var floor);
+                    var hasCeiling = GetFacePlane(roomEntity, getVertex, getFlatCeiling, getSlopedCeiling,
+                        out var ceiling);
 
                     var vertexOffset = 0;
                     var indexOffset = 0;
 
+                    var firstHalfEdgeEntity = Entity.Null;
+                    var halfEdgeCount = 0;
+
                     foreach (var halfEdgeEntity in halfEdges)
                     {
                         var halfEdge = getHalfEdge[halfEdgeEntity];
-                        if (!halfEdge.Room.Equals(roomEntity))
+                        if (halfEdge.Room != roomEntity)
                         {
                             continue;
                         }
 
-                        var vertex0 = getVertex[halfEdge.Vertex0];
-                        var vertex1 = getVertex[halfEdge.Vertex1];
+                        ++halfEdgeCount;
+
+                        if (firstHalfEdgeEntity == Entity.Null)
+                        {
+                            firstHalfEdgeEntity = halfEdgeEntity;
+                        }
+
+                        var vertex0 = getVertex[halfEdge.Vertex];
+                        var vertex1 = getVertex[getHalfEdge[halfEdge.Next].Vertex];
 
                         var diff = new float2(vertex1.X, vertex1.Z) - new float2(vertex0.X, vertex0.Z);
-                        var normal = new float3(-diff.y, 0f, diff.x);
+                        var normal = math.normalize(new float3(diff.y, 0f, -diff.x));
+                        var tangent = math.cross(normal, new float3(0f, 1f, 0f));
 
-                        if (hasFloor && hasCeiling)
-                        {
-                            int wall0, wall1, wall2, wall3;
+                        var u0 = math.dot(tangent, new float3(vertex0.X, 0f, vertex0.Z));
+                        var u1 = math.dot(tangent, new float3(vertex1.X, 0f, vertex1.Z));
 
-                            vertices[wall0 = vertexOffset++] = VertexToFloat3(ref floor0, ref floor1, ref floor2, vertex0);
-                            vertices[wall1 = vertexOffset++] = VertexToFloat3(ref floor0, ref floor1, ref floor2, vertex1);
+                        if (!hasFloor || !hasCeiling) continue;
 
-                            normals[wall0] = normal;
-                            normals[wall1] = normal;
+                        int wall0, wall1, wall2, wall3;
 
-                            vertices[wall2 = vertexOffset++] = VertexToFloat3(ref ceiling0, ref ceiling1, ref ceiling2, vertex0);
-                            vertices[wall3 = vertexOffset++] = VertexToFloat3(ref ceiling0, ref ceiling1, ref ceiling2, vertex1);
+                        vertices[wall0 = vertexOffset++] = VertexToFloat3(in floor, vertex0);
+                        vertices[wall1 = vertexOffset++] = VertexToFloat3(in floor, vertex1);
 
-                            normals[wall2] = normal;
-                            normals[wall3] = normal;
+                        normals[wall0] = normal;
+                        normals[wall1] = normal;
 
-                            indices[indexOffset++] = wall0;
-                            indices[indexOffset++] = wall1;
-                            indices[indexOffset++] = wall2;
+                        uvs[wall0] = new float2(u0, vertices[wall0].y);
+                        uvs[wall1] = new float2(u1, vertices[wall1].y);
 
-                            indices[indexOffset++] = wall2;
-                            indices[indexOffset++] = wall1;
-                            indices[indexOffset++] = wall3;
-                        }
+                        vertices[wall2 = vertexOffset++] = VertexToFloat3(in ceiling, vertex0);
+                        vertices[wall3 = vertexOffset++] = VertexToFloat3(in ceiling, vertex1);
+
+                        normals[wall2] = normal;
+                        normals[wall3] = normal;
+
+                        uvs[wall2] = new float2(u0, vertices[wall2].y);
+                        uvs[wall3] = new float2(u1, vertices[wall3].y);
+
+                        indices[indexOffset++] = wall0;
+                        indices[indexOffset++] = wall2;
+                        indices[indexOffset++] = wall1;
+
+                        indices[indexOffset++] = wall2;
+                        indices[indexOffset++] = wall3;
+                        indices[indexOffset++] = wall1;
                     }
+
+                    var firstFloorIndex = -1;
+                    var firstCeilIndex = -1;
+
+                    var curHalfEdgeEntity = firstHalfEdgeEntity;
+                    do
+                    {
+                        var halfEdge = getHalfEdge[curHalfEdgeEntity];
+
+                        var vertex0 = getVertex[halfEdge.Vertex];
+                        var vertex1 = getVertex[getHalfEdge[halfEdge.Next].Vertex];
+
+                        if (hasFloor)
+                        {
+                            if (firstFloorIndex == -1)
+                            {
+                                firstFloorIndex = vertexOffset;
+                            }
+
+                            int floor0, floor1;
+
+                            vertices[floor0 = vertexOffset++] = VertexToFloat3(in floor, vertex0);
+                            vertices[floor1 = vertexOffset++] = VertexToFloat3(in floor, vertex1);
+
+                            normals[floor0] = floor.Normal;
+                            normals[floor1] = floor.Normal;
+
+                            uvs[floor0] = new float2(vertex0.X, vertex0.Z);
+                            uvs[floor1] = new float2(vertex1.X, vertex1.Z);
+
+                            if (curHalfEdgeEntity != firstHalfEdgeEntity)
+                            {
+                                indices[indexOffset++] = firstFloorIndex;
+                                indices[indexOffset++] = floor0;
+                                indices[indexOffset++] = floor1;
+                            }
+                        }
+
+                        if (hasCeiling)
+                        {
+                            if (firstCeilIndex == -1)
+                            {
+                                firstCeilIndex = vertexOffset;
+                            }
+
+                            int ceiling0, ceiling1;
+
+                            vertices[ceiling0 = vertexOffset++] = VertexToFloat3(in ceiling, vertex0);
+                            vertices[ceiling1 = vertexOffset++] = VertexToFloat3(in ceiling, vertex1);
+
+                            normals[ceiling0] = -ceiling.Normal;
+                            normals[ceiling1] = -ceiling.Normal;
+
+                            uvs[ceiling0] = new float2(vertex0.X, vertex0.Z);
+                            uvs[ceiling1] = new float2(vertex1.X, vertex1.Z);
+
+                            if (curHalfEdgeEntity != firstHalfEdgeEntity)
+                            {
+                                indices[indexOffset++] = firstCeilIndex;
+                                indices[indexOffset++] = ceiling1;
+                                indices[indexOffset++] = ceiling0;
+                            }
+                        }
+
+                        curHalfEdgeEntity = halfEdge.Next;
+                    } while (curHalfEdgeEntity != firstHalfEdgeEntity && --halfEdgeCount > 0);
 
                     var renderMesh = EntityManager.GetSharedComponentData<RenderMesh>(roomEntity);
 
                     renderMesh.mesh.SetVertices(vertices, 0, vertexOffset);
                     renderMesh.mesh.SetNormals(normals, 0, vertexOffset);
+                    renderMesh.mesh.SetUVs(0, uvs, 0, vertexOffset);
                     renderMesh.mesh.SetIndices(indices, 0, indexOffset, MeshTopology.Triangles, 0);
                 }
 
                 vertices.Dispose();
                 normals.Dispose();
+                uvs.Dispose();
                 indices.Dispose();
             }
 

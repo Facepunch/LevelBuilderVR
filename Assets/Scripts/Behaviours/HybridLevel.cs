@@ -1,6 +1,6 @@
 ﻿using LevelBuilderVR.Entities;
-using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
 
@@ -16,7 +16,7 @@ namespace LevelBuilderVR.Behaviours
         private void Start()
         {
             _entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
-            _level = _entityManager.CreateLevelTemplate();
+            _level = _entityManager.CreateLevelTemplate(new float3(8f, 3f, 12f));
         }
 
         private void Update()
