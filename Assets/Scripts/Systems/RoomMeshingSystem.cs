@@ -19,7 +19,8 @@ namespace LevelBuilderVR.Systems
         {
             _changedRoomsQuery = Entities
                 .WithAllReadOnly<Room, DirtyMesh>()
-                .WithAnyReadOnly<FlatFloor, FlatCeiling, SlopedFloor, SlopedCeiling, RenderMesh>()
+                .WithAll<RenderMesh>()
+                .WithAnyReadOnly<FlatFloor, FlatCeiling, SlopedFloor, SlopedCeiling>()
                 .ToEntityQuery();
 
             _halfEdgesQuery = Entities

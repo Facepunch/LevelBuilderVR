@@ -66,6 +66,14 @@ namespace LevelBuilderVR.Behaviours
                 var sizeRatio = betweenLocalDiff.magnitude / betweenAnchorDiff.magnitude;
 
                 TargetLevel.transform.localScale *= sizeRatio;
+
+                var betweenAnchorAngle = Mathf.Atan2(betweenAnchorDiff.z, betweenAnchorDiff.x) * Mathf.Rad2Deg;
+                var betweenLocalAngle = Mathf.Atan2(betweenLocalDiff.z, betweenLocalDiff.x) * Mathf.Rad2Deg;
+                var angleDiff = Mathf.DeltaAngle(betweenAnchorAngle, betweenLocalAngle);
+
+                var worldPivot = TargetLevel.transform.TransformPoint(pos);
+
+                TargetLevel.transform.RotateAround(worldPivot, Vector3.up, -angleDiff);
             }
             else if (leftGrabZoomHeld || rightGrabZoomHeld)
             {
