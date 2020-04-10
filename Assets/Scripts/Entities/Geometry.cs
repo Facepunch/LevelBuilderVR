@@ -1,4 +1,5 @@
-﻿using Unity.Entities;
+﻿using System;
+using Unity.Entities;
 using UnityEngine;
 
 namespace LevelBuilderVR.Entities
@@ -7,8 +8,8 @@ namespace LevelBuilderVR.Entities
     {
         private static EntityArchetype _sLevelArchetype;
         private static EntityArchetype _sRoomArchetype;
-        private static EntityArchetype _sWallArchetype;
-        private static EntityArchetype _sCornerArchetype;
+        private static EntityArchetype _sHalfEdgeArchetype;
+        private static EntityArchetype _sVertexArchetype;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void InitializeBeforeScene()
@@ -16,20 +17,24 @@ namespace LevelBuilderVR.Entities
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
 
             _sLevelArchetype = em.CreateArchetype(
+                typeof(Identifier),
                 typeof(Level),
                 typeof(WithinLevel));
 
             _sRoomArchetype = em.CreateArchetype(
+                typeof(Identifier),
                 typeof(Room),
                 typeof(WithinLevel));
 
-            _sWallArchetype = em.CreateArchetype(
-                typeof(Wall),
+            _sHalfEdgeArchetype = em.CreateArchetype(
+                typeof(Identifier),
+                typeof(HalfEdge),
                 typeof(WithinLevel),
                 typeof(WithinRoom));
 
-            _sCornerArchetype = em.CreateArchetype(
-                typeof(Corner),
+            _sVertexArchetype = em.CreateArchetype(
+                typeof(Identifier),
+                typeof(Vertex),
                 typeof(WithinLevel));
         }
 
@@ -45,29 +50,33 @@ namespace LevelBuilderVR.Entities
         {
             var level = em.CreateLevel();
 
-            var corner0 = em.CreateCorner(level, -4f, -6f);
-            var corner1 = em.CreateCorner(level, 4f, -6f);
-            var corner2 = em.CreateCorner(level, -4f, 6f);
-            var corner3 = em.CreateCorner(level, 4f, 6f);
+            var corner0 = em.CreateVertex(level, -4f, -6f);
+            var corner1 = em.CreateVertex(level, 4f, -6f);
+            var corner2 = em.CreateVertex(level, -4f, 6f);
+            var corner3 = em.CreateVertex(level, 4f, 6f);
 
             var room = em.CreateRoom(level, 0f, 3f);
 
-            em.CreateWall(room, corner0, corner1);
-            em.CreateWall(room, corner1, corner3);
-            em.CreateWall(room, corner3, corner2);
-            em.CreateWall(room, corner2, corner0);
+            em.CreateHalfEdge(room, corner0, corner1);
+            em.CreateHalfEdge(room, corner1, corner3);
+            em.CreateHalfEdge(room, corner3, corner2);
+            em.CreateHalfEdge(room, corner2, corner0);
 
             return level;
+        }
+
+        private static void AssignNewIdentifier(this EntityManager em, Entity entity)
+        {
+            em.SetComponentData(entity, new Identifier(Guid.NewGuid()));
         }
 
         public static Entity CreateLevel(this EntityManager em)
         {
             var level = em.CreateEntity(_sLevelArchetype);
 
-            em.SetSharedComponentData(level, new WithinLevel
-            {
-                Level = level
-            });
+            em.AssignNewIdentifier(level);
+
+            em.SetSharedComponentData(level, new WithinLevel(level));
 
             return level;
         }
@@ -76,10 +85,9 @@ namespace LevelBuilderVR.Entities
         {
             var room = em.CreateEntity(_sRoomArchetype);
 
-            em.SetSharedComponentData(room, new WithinLevel
-            {
-                Level = level
-            });
+            em.AssignNewIdentifier(room);
+
+            em.SetSharedComponentData(room, new WithinLevel(level));
 
             if (floor.HasValue)
             {
@@ -100,58 +108,42 @@ namespace LevelBuilderVR.Entities
             return room;
         }
 
-        public static Entity CreateWall(this EntityManager em, Entity room, Entity corner0, Entity corner1, float offset = 1f / 8f, float? bottom = null, float? top = null)
+        public static Entity CreateHalfEdge(this EntityManager em, Entity room, Entity vertex0, Entity vertex1)
         {
-            var wall = em.CreateEntity(_sWallArchetype);
+            var halfEdge = em.CreateEntity(_sHalfEdgeArchetype);
+
+            em.AssignNewIdentifier(halfEdge);
 
             var withinLevelData = em.GetSharedComponentData<WithinLevel>(room);
 
-            em.SetSharedComponentData(wall, new WithinLevel
+            em.SetSharedComponentData(halfEdge, withinLevelData);
+
+            em.SetSharedComponentData(halfEdge, new WithinRoom(room));
+
+            em.SetComponentData(halfEdge, new HalfEdge
             {
-                Level = withinLevelData.Level
+                Vertex0 = vertex0,
+                Vertex1 = vertex1
             });
 
-            em.SetSharedComponentData(wall, new WithinRoom
-            {
-                Room = room
-            });
-
-            em.SetComponentData(wall, new Wall
-            {
-                Offset = offset,
-                Anchor0 = new WallAnchor
-                {
-                    Corner = corner0,
-                    MinY = bottom ?? float.NegativeInfinity,
-                    MaxY = top ?? float.PositiveInfinity
-                },
-                Anchor1 = new WallAnchor
-                {
-                    Corner = corner1,
-                    MinY = bottom ?? float.NegativeInfinity,
-                    MaxY = top ?? float.PositiveInfinity
-                }
-            });
-
-            return wall;
+            return halfEdge;
         }
 
-        public static Entity CreateCorner(this EntityManager em, Entity level, float x, float z)
+        public static Entity CreateVertex(this EntityManager em, Entity level, float x, float z)
         {
-            var corner = em.CreateEntity(_sCornerArchetype);
+            var vertex = em.CreateEntity(_sVertexArchetype);
 
-            em.SetSharedComponentData(corner, new WithinLevel
-            {
-                Level = level
-            });
+            em.AssignNewIdentifier(vertex);
 
-            em.SetComponentData(corner, new Corner
+            em.SetSharedComponentData(vertex, new WithinLevel(level));
+
+            em.SetComponentData(vertex, new Vertex
             {
                 X = x,
                 Z = z
             });
 
-            return corner;
+            return vertex;
         }
     }
 }

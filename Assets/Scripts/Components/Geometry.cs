@@ -1,15 +1,46 @@
-﻿using Unity.Entities;
+﻿using System;
+using Unity.Entities;
 
 namespace LevelBuilderVR
 {
+    public struct Identifier : IComponentData
+    {
+        public readonly Guid Guid;
+
+        public Identifier(Guid guid)
+        {
+            Guid = guid;
+        }
+    }
+
     public struct Level : IComponentData
     {
 
     }
 
-    public struct WithinLevel : ISharedComponentData
+    public struct WithinLevel : ISharedComponentData, IEquatable<WithinLevel>
     {
-        public Entity Level;
+        public readonly Entity Level;
+
+        public WithinLevel(Entity level)
+        {
+            Level = level;
+        }
+
+        public bool Equals(WithinLevel other)
+        {
+            return Level.Equals(other.Level);
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is WithinLevel other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return Level.GetHashCode();
+        }
     }
 
     public struct Room : IComponentData
@@ -17,9 +48,29 @@ namespace LevelBuilderVR
 
     }
 
-    public struct WithinRoom : ISharedComponentData
+    public struct WithinRoom : ISharedComponentData, IEquatable<WithinRoom>
     {
-        public Entity Room;
+        public readonly Entity Room;
+
+        public WithinRoom(Entity room)
+        {
+            Room = room;
+        }
+
+        public bool Equals(WithinRoom other)
+        {
+            return Room.Equals(other.Room);
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is WithinRoom other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return Room.GetHashCode();
+        }
     }
 
     public struct FlatFloor : IComponentData
@@ -32,44 +83,43 @@ namespace LevelBuilderVR
         public float Y;
     }
 
-    public struct SlopeAnchor
+    public struct SlopeVertex
     {
-        public Entity Corner;
+        public Entity Vertex;
         public float Y;
     }
 
     public struct SlopedFloor : IComponentData
     {
-        public SlopeAnchor Anchor0;
-        public SlopeAnchor Anchor1;
-        public SlopeAnchor Anchor2;
+        public SlopeVertex Anchor0;
+        public SlopeVertex Anchor1;
+        public SlopeVertex Anchor2;
     }
 
     public struct SlopedCeiling : IComponentData
     {
-        public SlopeAnchor Anchor0;
-        public SlopeAnchor Anchor1;
-        public SlopeAnchor Anchor2;
+        public SlopeVertex Anchor0;
+        public SlopeVertex Anchor1;
+        public SlopeVertex Anchor2;
     }
 
-    public struct Corner : IComponentData
+    public struct Vertex : IComponentData
     {
         public float X;
         public float Z;
     }
 
-    public struct WallAnchor
+    public struct HalfEdge : IComponentData
     {
-        public Entity Corner;
-        public float MinY;
-        public float MaxY;
-    }
+        /// <summary>
+        /// Left vertex of the edge.
+        /// </summary>
+        public Entity Vertex0;
 
-    public struct Wall : IComponentData
-    {
-        public float Offset;
-        public WallAnchor Anchor0;
-        public WallAnchor Anchor1;
+        /// <summary>
+        /// Right vertex of the edge.
+        /// </summary>
+        public Entity Vertex1;
     }
 
     public struct Selected : IComponentData
