@@ -8,23 +8,24 @@ namespace LevelBuilderVR.Behaviours
 {
     public class HybridLevel : MonoBehaviour
     {
-        private EntityManager _entityManager;
         private Entity _level;
 
         public Material Material;
 
         private void Start()
         {
-            _entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
-            _level = _entityManager.CreateLevelTemplate(new float3(8f, 3f, 12f));
+            _level = World.DefaultGameObjectInjectionWorld.EntityManager.CreateLevelTemplate(new float3(8f, 3f, 12f));
         }
 
         private void Update()
         {
-            _entityManager.SetComponentData(_level, new LocalToWorld
+            if (_level != Entity.Null)
             {
-                Value = transform.localToWorldMatrix
-            });
+                World.DefaultGameObjectInjectionWorld.EntityManager.SetComponentData(_level, new LocalToWorld
+                {
+                    Value = transform.localToWorldMatrix
+                });
+            }
         }
     }
 }

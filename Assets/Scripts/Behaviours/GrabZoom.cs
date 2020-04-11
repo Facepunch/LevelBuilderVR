@@ -8,6 +8,9 @@ namespace LevelBuilderVR.Behaviours
     {
         public HybridLevel TargetLevel;
 
+        public float MinScale = 1f / 100f;
+        public float MaxScale = 1f;
+
         public SteamVR_Action_Boolean GrabZoomAction = SteamVR_Input.GetBooleanAction("GrabZoom");
 
         private Vector3 _leftLocalAnchor;
@@ -18,9 +21,24 @@ namespace LevelBuilderVR.Behaviours
 
         }
 
-        private static bool IsHandValid(Hand hand)
+        private static bool TryGetPointerPosition(Hand hand, out Vector3 worldPos)
         {
-            return hand.currentAttachedObject == null;
+            if (hand.isActive && hand.mainRenderModel != null && hand.currentAttachedObject == null)
+            {
+                try
+                {
+                    worldPos = hand.mainRenderModel.GetControllerPosition(hand.controllerHoverComponent);
+                    return true;
+                }
+                catch
+                {
+                    worldPos = hand.transform.position;
+                    return false;
+                }
+            }
+
+            worldPos = hand.transform.position;
+            return false;
         }
 
         private void Update()
@@ -29,8 +47,8 @@ namespace LevelBuilderVR.Behaviours
 
             var player = Player.instance;
 
-            var leftValid = IsHandValid(player.leftHand);
-            var rightValid = IsHandValid(player.rightHand);
+            var leftValid = TryGetPointerPosition(player.leftHand, out var leftWorldPos);
+            var rightValid = TryGetPointerPosition(player.rightHand, out var rightWorldPos);
 
             var leftGrabZoomPressed = leftValid && GrabZoomAction.GetStateDown(SteamVR_Input_Sources.LeftHand);
             var rightGrabZoomPressed = rightValid && GrabZoomAction.GetStateDown(SteamVR_Input_Sources.RightHand);
@@ -41,8 +59,8 @@ namespace LevelBuilderVR.Behaviours
             var leftGrabZoomHeld = leftValid && GrabZoomAction.GetState(SteamVR_Input_Sources.LeftHand);
             var rightGrabZoomHeld = rightValid && GrabZoomAction.GetState(SteamVR_Input_Sources.RightHand);
 
-            var leftLocalPos = TargetLevel.transform.InverseTransformPoint(player.leftHand.objectAttachmentPoint.position);
-            var rightLocalPos = TargetLevel.transform.InverseTransformPoint(player.rightHand.objectAttachmentPoint.position);
+            var leftLocalPos = TargetLevel.transform.InverseTransformPoint(leftWorldPos);
+            var rightLocalPos = TargetLevel.transform.InverseTransformPoint(rightWorldPos);
 
             if (leftGrabZoomPressed || rightGrabZoomPressed || leftGrabZoomReleased || rightGrabZoomReleased)
             {
@@ -64,16 +82,20 @@ namespace LevelBuilderVR.Behaviours
                 var betweenLocalDiff = rightLocalPos - leftLocalPos;
 
                 var sizeRatio = betweenLocalDiff.magnitude / betweenAnchorDiff.magnitude;
+                var newScale = Mathf.Clamp(TargetLevel.transform.localScale.x * sizeRatio, MinScale, MaxScale);
 
-                TargetLevel.transform.localScale *= sizeRatio;
+                TargetLevel.transform.localScale = Vector3.one * newScale;
 
                 var betweenAnchorAngle = Mathf.Atan2(betweenAnchorDiff.z, betweenAnchorDiff.x) * Mathf.Rad2Deg;
                 var betweenLocalAngle = Mathf.Atan2(betweenLocalDiff.z, betweenLocalDiff.x) * Mathf.Rad2Deg;
-                var angleDiff = Mathf.DeltaAngle(betweenAnchorAngle, betweenLocalAngle);
 
-                var worldPivot = TargetLevel.transform.TransformPoint(pos);
+                if (Mathf.Abs(betweenAnchorDiff.normalized.y) < Mathf.Sqrt(0.5f))
+                {
+                    var angleDiff = Mathf.DeltaAngle(betweenAnchorAngle, betweenLocalAngle);
+                    var worldPivot = TargetLevel.transform.TransformPoint(pos);
 
-                TargetLevel.transform.RotateAround(worldPivot, Vector3.up, -angleDiff);
+                    TargetLevel.transform.RotateAround(worldPivot, Vector3.up, -angleDiff);
+                }
             }
             else if (leftGrabZoomHeld || rightGrabZoomHeld)
             {

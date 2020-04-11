@@ -322,6 +322,11 @@ GameObject:
   - component: {fileID: 1542598994}
   - component: {fileID: 1542598993}
   - component: {fileID: 1542598995}
+  - component: {fileID: 1542598996}
+  - component: {fileID: 1542599000}
+  - component: {fileID: 1542598999}
+  - component: {fileID: 1542598998}
+  - component: {fileID: 1542598997}
   m_Layer: 0
   m_Name: PlayerSetup
   m_TagString: Untagged
@@ -369,9 +374,90 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   TargetLevel: {fileID: 2143160708}
+  MinScale: 0.03125
+  MaxScale: 1
   GrabZoomAction:
     actionPath: /actions/default/in/GrabZoom
     needsReinit: 0
+--- !u!114 &1542598996
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1542598992}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bee9ff8e20c9fd64f8df0330a0bb2fc4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  OpenAction:
+    actionPath: /actions/default/in/ToolMenu
+    needsReinit: 0
+  RadialMenuPrefab: {fileID: 7542086456646585159, guid: 69be76c768686e046926d1d13d24355c,
+    type: 3}
+  RadialMenu: {fileID: 0}
+  SelectedTool: {fileID: 0}
+--- !u!114 &1542598997
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1542598992}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9112681663e3b634f9346e6a1c619fc7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Label: Test4
+  Icon: {fileID: 21300000, guid: 19e1ab084fe328a49bd839abce8828aa, type: 3}
+  IsSelected: 0
+--- !u!114 &1542598998
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1542598992}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9112681663e3b634f9346e6a1c619fc7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Label: Test3
+  Icon: {fileID: 21300000, guid: f52e32f42d3d0b442ba7843c3fa117de, type: 3}
+  IsSelected: 0
+--- !u!114 &1542598999
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1542598992}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9112681663e3b634f9346e6a1c619fc7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Label: Test2
+  Icon: {fileID: 21300000, guid: 46c6e6575c92b9644afac45bdd63945d, type: 3}
+  IsSelected: 0
+--- !u!114 &1542599000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1542598992}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9112681663e3b634f9346e6a1c619fc7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  Label: Test1
+  Icon: {fileID: 21300000, guid: 385095d67d86f704c885e33e1c88c760, type: 3}
+  IsSelected: 0
 --- !u!1 &1761988834
 GameObject:
   m_ObjectHideFlags: 0

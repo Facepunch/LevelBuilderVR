@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9a5467440b07544192c6bd87cc0194b, type: 3}
+  m_Name: RadialBack
+  m_EditorClassIdentifier: 
+  color: {r: 1, g: 1, b: 1, a: 0.5019608}
+  enableGradient: 1
+  gradientAngle: -180
+  gradient:
+    keyPointCount: 2
+    _keyPoint0:
+      color: {r: 0.794, g: 0.794, b: 1, a: 1}
+      progress: 0
+    _keyPoint1:
+      color: {r: 0.3647059, g: 0.3647059, b: 0.99215686, a: 1}
+      progress: 1
+    _keyPoint2:
+      color: {r: 0, g: 0, b: 0, a: 0}
+      progress: 0
+    _keyPoint3:
+      color: {r: 0, g: 0, b: 0, a: 0}
+      progress: 0
+  borderMode: 0
+  borderColor: {r: 1, g: 1, b: 1, a: 1}
+  borderWidth: 0
+  cornerRadius: 512
+  enableBoxShadow: 1
+  boxShadowColor: {r: 0, g: 0, b: 0, a: 1}
+  boxShadowBlurRadius: 64
+  boxShadowOffset: {x: 0, y: 0}
+  boxShadowInner: 0

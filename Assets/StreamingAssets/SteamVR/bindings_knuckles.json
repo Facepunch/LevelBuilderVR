@@ -181,6 +181,9 @@
                   "east" : {
                      "output" : "/actions/default/in/snapturnright"
                   },
+                  "south" : {
+                     "output" : "/actions/default/in/toolmenu"
+                  },
                   "west" : {
                      "output" : "/actions/default/in/snapturnleft"
                   }
@@ -197,6 +200,9 @@
                "inputs" : {
                   "east" : {
                      "output" : "/actions/default/in/snapturnright"
+                  },
+                  "south" : {
+                     "output" : "/actions/default/in/toolmenu"
                   },
                   "west" : {
                      "output" : "/actions/default/in/snapturnleft"
@@ -269,7 +275,11 @@
                   }
                },
                "mode" : "button",
-               "path" : "/user/hand/left/input/trigger"
+               "parameters" : {
+                  "click_activate_threshold" : "0.9",
+                  "click_deactivate_threshold" : "0.75"
+               },
+               "path" : "/user/hand/left/input/grip"
             },
             {
                "inputs" : {
@@ -278,7 +288,11 @@
                   }
                },
                "mode" : "button",
-               "path" : "/user/hand/right/input/trigger"
+               "parameters" : {
+                  "click_activate_threshold" : "0.9",
+                  "click_deactivate_threshold" : "0.75"
+               },
+               "path" : "/user/hand/right/input/grip"
             }
          ]
       },
@@ -326,7 +340,7 @@
    "category" : "steamvr_input",
    "controller_type" : "knuckles",
    "description" : "",
-   "name" : "Default LevelBuilderVR Configuration for Index Controller",
+   "name" : "LevelBuilderVR configuration for Index Controller",
    "options" : {},
    "simulated_actions" : []
 }
