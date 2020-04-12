@@ -239,18 +239,19 @@ namespace LevelBuilderVR.Entities
             return vertex;
         }
 
-        public static bool SetHovered(this EntityManager em, Entity entity, bool hovered)
+        private static bool SetMaterialFlag<TFlag>(this EntityManager em, Entity entity, bool enabled)
+            where TFlag : struct, IComponentData
         {
             var changed = false;
 
-            if (hovered && !em.HasComponent<Hovered>(entity))
+            if (enabled && !em.HasComponent<TFlag>(entity))
             {
-                em.AddComponent<Hovered>(entity);
+                em.AddComponent<TFlag>(entity);
                 changed = true;
             }
-            else if (!hovered && em.HasComponent<Hovered>(entity))
+            else if (!enabled && em.HasComponent<TFlag>(entity))
             {
-                em.RemoveComponent<Hovered>(entity);
+                em.RemoveComponent<TFlag>(entity);
                 changed = true;
             }
 
@@ -260,6 +261,11 @@ namespace LevelBuilderVR.Entities
             }
 
             return changed;
+        }
+
+        public static bool SetHovered(this EntityManager em, Entity entity, bool hovered)
+        {
+            return em.SetMaterialFlag<Hovered>(entity, hovered);
         }
 
         public static bool GetSelected(this EntityManager em, Entity entity)
@@ -269,25 +275,7 @@ namespace LevelBuilderVR.Entities
 
         public static bool SetSelected(this EntityManager em, Entity entity, bool selected)
         {
-            var changed = false;
-
-            if (selected && !em.HasComponent<Selected>(entity))
-            {
-                em.AddComponent<Selected>(entity);
-                changed = true;
-            }
-            else if (!selected && em.HasComponent<Selected>(entity))
-            {
-                em.RemoveComponent<Selected>(entity);
-                changed = true;
-            }
-
-            if (changed && em.HasComponent<RenderMesh>(entity))
-            {
-                em.AddComponent<DirtyMaterial>(entity);
-            }
-
-            return changed;
+            return em.SetMaterialFlag<Selected>(entity, selected);
         }
 
         public static void DeselectAll(this EntityManager em)
