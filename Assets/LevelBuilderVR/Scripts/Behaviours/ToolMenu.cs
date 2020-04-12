@@ -38,6 +38,28 @@ namespace LevelBuilderVR.Behaviours
             RadialMenu.Show(hand, OpenAction);
         }
 
+        private void OnEnable()
+        {
+            Tool firstSelected = null;
+
+            foreach (var tool in FindObjectsOfType<Tool>())
+            {
+                if (!tool.IsSelected)
+                {
+                    continue;
+                }
+
+                if (firstSelected == null)
+                {
+                    firstSelected = tool;
+                }
+                else
+                {
+                    tool.IsSelected = false;
+                }
+            }
+        }
+
         private void Update()
         {
             var player = Player.instance;

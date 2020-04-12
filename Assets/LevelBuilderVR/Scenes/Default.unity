@@ -374,7 +374,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   TargetLevel: {fileID: 2143160708}
-  MinScale: 0.03125
+  MinScale: 0.01
   MaxScale: 1
   GrabZoomAction:
     actionPath: /actions/default/in/GrabZoom
@@ -410,6 +410,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9112681663e3b634f9346e6a1c619fc7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  UseToolAction:
+    actionPath: /actions/default/in/UseTool
+    needsReinit: 0
   Label: Test4
   Icon: {fileID: 21300000, guid: 19e1ab084fe328a49bd839abce8828aa, type: 3}
   IsSelected: 0
@@ -425,6 +428,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9112681663e3b634f9346e6a1c619fc7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  UseToolAction:
+    actionPath: /actions/default/in/UseTool
+    needsReinit: 0
   Label: Test3
   Icon: {fileID: 21300000, guid: 385095d67d86f704c885e33e1c88c760, type: 3}
   IsSelected: 0
@@ -440,6 +446,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9112681663e3b634f9346e6a1c619fc7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  UseToolAction:
+    actionPath: /actions/default/in/UseTool
+    needsReinit: 0
   Label: Test2
   Icon: {fileID: 21300000, guid: 46c6e6575c92b9644afac45bdd63945d, type: 3}
   IsSelected: 0
@@ -455,10 +464,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4f5ee3a3835761e4c89d6a141e2050e0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  UseToolAction:
+    actionPath: /actions/default/in/UseTool
+    needsReinit: 0
   Label: Vertex Edit
   Icon: {fileID: 21300000, guid: f52e32f42d3d0b442ba7843c3fa117de, type: 3}
-  IsSelected: 0
-  InteractRadius: 0.01
+  IsSelected: 1
+  InteractRadius: 0.05
   HapticPulseDurationMicros: 500
 --- !u!1 &1761988834
 GameObject:
@@ -700,12 +712,17 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Material: {fileID: 2100000, guid: 466ca5482d753214285dbf47d3b0c0c9, type: 2}
+  HoverTint: {r: 0, g: 0.1606, b: 0.33, a: 1}
+  SelectedTint: {r: 0.89, g: 0.596, b: 0.09, a: 1}
+  HoverSelectedTint: {r: 1, g: 0.675, b: 0.098, a: 1}
   VertexWidgetMesh: {fileID: -5495902117074765545, guid: 62fc510b66f27044f956de40f4e9e908,
     type: 3}
-  VertexWidgetMaterial: {fileID: 2100000, guid: 16469bd2c8164f949b69a8ca531d74e7,
+  VertexWidgetBaseMaterial: {fileID: 2100000, guid: 16469bd2c8164f949b69a8ca531d74e7,
     type: 2}
   VertexWidgetHoverMaterial: {fileID: 2100000, guid: 03dbfe5b12bc14145978c603588e58ed,
     type: 2}
+  VertexWidgetSelectedMaterial: {fileID: 0}
+  VertexWidgetHoverSelectedMaterial: {fileID: 0}
 --- !u!4 &2143160709
 Transform:
   m_ObjectHideFlags: 0

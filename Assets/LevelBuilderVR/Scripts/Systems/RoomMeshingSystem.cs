@@ -298,6 +298,33 @@ namespace LevelBuilderVR.Systems
                 });
 
             Entities
+                .WithAllReadOnly<Vertex, Selected, DirtyMaterial>()
+                .WithNone<Hovered>()
+                .WithAll<RenderMesh>()
+                .ForEach(entity =>
+                {
+                    var renderMesh = EntityManager.GetSharedComponentData<RenderMesh>(entity);
+
+                    renderMesh.material = HybridLevel.VertexWidgetSelectedMaterial;
+
+                    PostUpdateCommands.SetSharedComponent(entity, renderMesh);
+                    PostUpdateCommands.RemoveComponent<DirtyMaterial>(entity);
+                });
+
+            Entities
+                .WithAllReadOnly<Vertex, Hovered, Selected, DirtyMaterial>()
+                .WithAll<RenderMesh>()
+                .ForEach(entity =>
+                {
+                    var renderMesh = EntityManager.GetSharedComponentData<RenderMesh>(entity);
+
+                    renderMesh.material = HybridLevel.VertexWidgetHoverSelectedMaterial;
+
+                    PostUpdateCommands.SetSharedComponent(entity, renderMesh);
+                    PostUpdateCommands.RemoveComponent<DirtyMaterial>(entity);
+                });
+
+            Entities
                 .WithAllReadOnly<Vertex, DirtyMaterial>()
                 .WithNone<Hovered, Selected>()
                 .WithAll<RenderMesh>()
@@ -305,7 +332,7 @@ namespace LevelBuilderVR.Systems
                 {
                     var renderMesh = EntityManager.GetSharedComponentData<RenderMesh>(entity);
 
-                    renderMesh.material = HybridLevel.VertexWidgetMaterial;
+                    renderMesh.material = HybridLevel.VertexWidgetBaseMaterial;
 
                     PostUpdateCommands.SetSharedComponent(entity, renderMesh);
                     PostUpdateCommands.RemoveComponent<DirtyMaterial>(entity);

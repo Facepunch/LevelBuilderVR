@@ -51,7 +51,6 @@ namespace Valve.VR.InteractionSystem
                 rotateRightFX.SetActive(false);
         }
 
-
         private void Update()
         {
             Player player = Player.instance;

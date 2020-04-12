@@ -1,11 +1,15 @@
 ﻿using Unity.Entities;
 using UnityEngine;
+using Valve.VR;
 using Valve.VR.InteractionSystem;
 
 namespace LevelBuilderVR.Behaviours.Tools
 {
     public class Tool : MonoBehaviour
     {
+        public SteamVR_Action_Boolean UseToolAction = SteamVR_Input.GetBooleanAction("UseTool");
+        public SteamVR_Action_Boolean MultiSelectAction = SteamVR_Input.GetBooleanAction("MultiSelect");
+
         public string Label;
         public Sprite Icon;
         public bool IsSelected;
@@ -37,7 +41,10 @@ namespace LevelBuilderVR.Behaviours.Tools
 
             _wasSelected = IsSelected;
 
-            OnUpdate();
+            if (IsSelected)
+            {
+                OnUpdate();
+            }
         }
 
         protected virtual void OnSelected()

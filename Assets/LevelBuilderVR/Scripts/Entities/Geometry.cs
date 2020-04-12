@@ -19,6 +19,7 @@ namespace LevelBuilderVR.Entities
         private static EntityArchetype _sVertexArchetype;
 
         private static HybridLevel _sHybridLevel;
+        private static EntityQuery _sSelectedQuery;
         private static EntityQuery _sClosestCornerQuery;
 
         private static HybridLevel HybridLevel => _sHybridLevel ?? (_sHybridLevel = Object.FindObjectOfType<HybridLevel>());
@@ -55,6 +56,12 @@ namespace LevelBuilderVR.Entities
                 typeof(RenderMesh),
                 typeof(LocalToWorld),
                 typeof(RenderBounds));
+
+            _sSelectedQuery = em.CreateEntityQuery(
+                new EntityQueryDesc
+                {
+                    All = new[] {ComponentType.ReadOnly<Selected>()}
+                });
 
             _sClosestCornerQuery = em.CreateEntityQuery(
                 new EntityQueryDesc {
@@ -210,7 +217,7 @@ namespace LevelBuilderVR.Entities
             em.SetSharedComponentData(vertex, new RenderMesh
             {
                 mesh = HybridLevel.VertexWidgetMesh,
-                material = HybridLevel.VertexWidgetMaterial,
+                material = HybridLevel.VertexWidgetBaseMaterial,
                 castShadows = ShadowCastingMode.Off,
                 receiveShadows = true
             });
@@ -253,6 +260,40 @@ namespace LevelBuilderVR.Entities
             }
 
             return changed;
+        }
+
+        public static bool GetSelected(this EntityManager em, Entity entity)
+        {
+            return em.HasComponent<Selected>(entity);
+        }
+
+        public static bool SetSelected(this EntityManager em, Entity entity, bool selected)
+        {
+            var changed = false;
+
+            if (selected && !em.HasComponent<Selected>(entity))
+            {
+                em.AddComponent<Selected>(entity);
+                changed = true;
+            }
+            else if (!selected && em.HasComponent<Selected>(entity))
+            {
+                em.RemoveComponent<Selected>(entity);
+                changed = true;
+            }
+
+            if (changed && em.HasComponent<RenderMesh>(entity))
+            {
+                em.AddComponent<DirtyMaterial>(entity);
+            }
+
+            return changed;
+        }
+
+        public static void DeselectAll(this EntityManager em)
+        {
+            em.AddComponent<DirtyMaterial>(_sSelectedQuery);
+            em.RemoveComponent<Selected>(_sSelectedQuery);
         }
 
         public static bool FindClosestVertex(this EntityManager em, Entity level, float3 localPos,
