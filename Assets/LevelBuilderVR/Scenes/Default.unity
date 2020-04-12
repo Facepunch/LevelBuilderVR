@@ -324,9 +324,6 @@ GameObject:
   - component: {fileID: 1542598995}
   - component: {fileID: 1542598996}
   - component: {fileID: 1542599000}
-  - component: {fileID: 1542598999}
-  - component: {fileID: 1542598998}
-  - component: {fileID: 1542598997}
   m_Layer: 0
   m_Name: PlayerSetup
   m_TagString: Untagged
@@ -347,6 +344,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ShowController: 1
+  CrosshairPrefab: {fileID: 5835064984216962529, guid: e64a67684911a4f4694e4aa7f9355fad,
+    type: 3}
 --- !u!4 &1542598994
 Transform:
   m_ObjectHideFlags: 0
@@ -374,11 +373,23 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   TargetLevel: {fileID: 2143160708}
-  MinScale: 0.01
-  MaxScale: 1
+  SnapAngle: 15
+  MinScaleLog10: -2
+  MaxScaleLog10: 0
+  ScaleIncrementLog10: 0.25
   GrabZoomAction:
     actionPath: /actions/default/in/GrabZoom
     needsReinit: 0
+  TextPrefab: {fileID: 5179937962962327403, guid: 66c629da605cebc41b293ff4ccfbd9bc,
+    type: 3}
+  CrosshairGrabTexture: {fileID: 2800000, guid: bae40348b7f2fdb49a668be8b40bbf9d,
+    type: 3}
+  CrosshairRotateTexture: {fileID: 2800000, guid: 13cd0e2296368a849960ee144fa30d97,
+    type: 3}
+  CrosshairScaleTexture: {fileID: 2800000, guid: e7f1dc640d140de42b84367d2fd33b66,
+    type: 3}
+  Text: {fileID: 0}
+  EasingTime: 0.2
 --- !u!114 &1542598996
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -398,60 +409,6 @@ MonoBehaviour:
     type: 3}
   RadialMenu: {fileID: 0}
   SelectedTool: {fileID: 0}
---- !u!114 &1542598997
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1542598992}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9112681663e3b634f9346e6a1c619fc7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  UseToolAction:
-    actionPath: /actions/default/in/UseTool
-    needsReinit: 0
-  Label: Test4
-  Icon: {fileID: 21300000, guid: 19e1ab084fe328a49bd839abce8828aa, type: 3}
-  IsSelected: 0
---- !u!114 &1542598998
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1542598992}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9112681663e3b634f9346e6a1c619fc7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  UseToolAction:
-    actionPath: /actions/default/in/UseTool
-    needsReinit: 0
-  Label: Test3
-  Icon: {fileID: 21300000, guid: 385095d67d86f704c885e33e1c88c760, type: 3}
-  IsSelected: 0
---- !u!114 &1542598999
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1542598992}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9112681663e3b634f9346e6a1c619fc7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  UseToolAction:
-    actionPath: /actions/default/in/UseTool
-    needsReinit: 0
-  Label: Test2
-  Icon: {fileID: 21300000, guid: 46c6e6575c92b9644afac45bdd63945d, type: 3}
-  IsSelected: 0
 --- !u!114 &1542599000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -467,10 +424,14 @@ MonoBehaviour:
   UseToolAction:
     actionPath: /actions/default/in/UseTool
     needsReinit: 0
+  MultiSelectAction:
+    actionPath: /actions/default/in/MultiSelect
+    needsReinit: 0
   Label: Vertex Edit
   Icon: {fileID: 21300000, guid: f52e32f42d3d0b442ba7843c3fa117de, type: 3}
   IsSelected: 1
   InteractRadius: 0.05
+  GridSnap: 0.25
   HapticPulseDurationMicros: 500
 --- !u!1 &1761988834
 GameObject:

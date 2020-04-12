@@ -1,4 +1,5 @@
 ﻿using JetBrains.Annotations;
+using LevelBuilderVR.Behaviours;
 using UnityEngine;
 using Valve.VR;
 using Valve.VR.InteractionSystem;
@@ -8,6 +9,7 @@ namespace LevelBuilderVR
     public class PlayerSetup : MonoBehaviour
     {
         public bool ShowController = true;
+        public GameObject CrosshairPrefab;
 
         private bool _leftSetup;
         private bool _rightSetup;
@@ -36,6 +38,13 @@ namespace LevelBuilderVR
 
                 hand.SetSkeletonRangeOfMotion(ShowController ? EVRSkeletalMotionRange.WithController : EVRSkeletalMotionRange.WithoutController);
                 hand.ShowController(ShowController);
+
+                if (CrosshairPrefab != null)
+                {
+                    var crosshair = Instantiate(CrosshairPrefab, hand.transform).GetComponent<Crosshair>();
+
+                    crosshair.Hand = hand;
+                }
             }
 
             if (_leftSetup && _rightSetup)
