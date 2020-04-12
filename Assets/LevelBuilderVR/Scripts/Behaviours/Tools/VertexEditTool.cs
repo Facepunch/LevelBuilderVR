@@ -14,7 +14,9 @@ namespace LevelBuilderVR.Behaviours.Tools
         private Entity _rightHovered;
 
         private bool _leftIsDragging;
+        private bool _leftIsDeselecting;
         private bool _rightIsDragging;
+        private bool _rightIsDeselecting;
 
         private float3 _leftDragOrigin;
         private float3 _rightDragOrigin;
@@ -100,7 +102,7 @@ namespace LevelBuilderVR.Behaviours.Tools
             return true;
         }
 
-        private bool UpdateInteract(Hand hand, float3 handPos, Entity hovered, ref bool isDragging, ref float3 dragOrigin)
+        private bool UpdateInteract(Hand hand, float3 handPos, Entity hovered, ref bool isDragging, ref bool isDeselecting, ref float3 dragOrigin)
         {
             if (UseToolAction.GetStateDown(hand.handType))
             {
@@ -108,7 +110,12 @@ namespace LevelBuilderVR.Behaviours.Tools
                 {
                     if (hovered != Entity.Null)
                     {
-                        EntityManager.SetSelected(hovered, !EntityManager.GetSelected(hovered));
+                        isDeselecting = EntityManager.GetSelected(hovered);
+                        EntityManager.SetSelected(hovered, !isDeselecting);
+                    }
+                    else
+                    {
+                        isDeselecting = false;
                     }
 
                     isDragging = false;
@@ -129,44 +136,51 @@ namespace LevelBuilderVR.Behaviours.Tools
                     dragOrigin = handPos;
                 }
             }
-            else if (UseToolAction.GetState(hand.handType) && isDragging)
+            else if (UseToolAction.GetState(hand.handType))
             {
-                var offset = handPos - dragOrigin;
-
-                var intOffset = new int3(math.round(offset / GridSnap))
+                if (isDragging)
                 {
-                    y = 0
-                };
+                    var offset = handPos - dragOrigin;
+
+                    var intOffset = new int3(math.round(offset / GridSnap))
+                    {
+                        y = 0
+                    };
 
 
-                if (math.lengthsq(intOffset) <= 0)
-                {
-                    return false;
+                    if (math.lengthsq(intOffset) <= 0)
+                    {
+                        return false;
+                    }
+
+                    offset = new float3(intOffset) * GridSnap;
+
+                    dragOrigin += offset;
+
+                    var allSelected = _getSelectedVerticesWritable.ToComponentDataArray<Vertex>(Allocator.TempJob);
+
+                    for (var i = 0; i < allSelected.Length; ++i)
+                    {
+                        var vertex = allSelected[i];
+
+                        vertex.X += offset.x;
+                        vertex.Z += offset.z;
+
+                        allSelected[i] = vertex;
+                    }
+
+                    _getSelectedVerticesWritable.CopyFromComponentDataArray(allSelected);
+
+                    allSelected.Dispose();
+
+                    EntityManager.AddComponent<DirtyMesh>(_getSelectedVertices);
+
+                    return true;
                 }
-
-                offset = new float3(intOffset) * GridSnap;
-
-                dragOrigin += offset;
-
-                var allSelected = _getSelectedVerticesWritable.ToComponentDataArray<Vertex>(Allocator.TempJob);
-
-                for (var i = 0; i < allSelected.Length; ++i)
+                else if (hovered != Entity.Null)
                 {
-                    var vertex = allSelected[i];
-
-                    vertex.X += offset.x;
-                    vertex.Z += offset.z;
-
-                    allSelected[i] = vertex;
+                    EntityManager.SetSelected(hovered, !isDeselecting);
                 }
-
-                _getSelectedVerticesWritable.CopyFromComponentDataArray(allSelected);
-
-                allSelected.Dispose();
-
-                EntityManager.AddComponent<DirtyMesh>(_getSelectedVertices);
-
-                return true;
             }
 
             return false;
@@ -181,12 +195,12 @@ namespace LevelBuilderVR.Behaviours.Tools
 
             if (UpdateHover(Player.leftHand, ref _leftHovered, out var leftHandPos))
             {
-                verticesMoved |= UpdateInteract(Player.leftHand, leftHandPos, _leftHovered, ref _leftIsDragging, ref _leftDragOrigin);
+                verticesMoved |= UpdateInteract(Player.leftHand, leftHandPos, _leftHovered, ref _leftIsDragging, ref _leftIsDeselecting, ref _leftDragOrigin);
             }
 
             if (UpdateHover(Player.rightHand, ref _rightHovered, out var rightHandPos))
             {
-                verticesMoved |= UpdateInteract(Player.rightHand, rightHandPos, _rightHovered, ref _rightIsDragging, ref _rightDragOrigin);
+                verticesMoved |= UpdateInteract(Player.rightHand, rightHandPos, _rightHovered, ref _rightIsDragging, ref _rightIsDeselecting, ref _rightDragOrigin);
             }
 
             if (!verticesMoved)
