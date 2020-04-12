@@ -53,6 +53,10 @@
       "type": "boolean"
     },
     {
+      "name": "/actions/default/in/AxisAlign",
+      "type": "boolean"
+    },
+    {
       "name": "/actions/default/out/Haptic",
       "type": "vibration"
     }
@@ -128,7 +132,8 @@
       "/actions/default/in/GrabZoom": "Grab Zoom",
       "/actions/default/in/ToolMenu": "Tool Menu",
       "/actions/default/in/UseTool": "Use Tool",
-      "/actions/default/in/MultiSelect": "Multi Select"
+      "/actions/default/in/MultiSelect": "Multi Select",
+      "/actions/default/in/AxisAlign": "Axis Align"
     }
   ]
 }

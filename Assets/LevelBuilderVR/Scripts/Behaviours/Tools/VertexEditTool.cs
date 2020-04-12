@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using LevelBuilderVR.Entities;
 using Unity.Collections;
 using Unity.Entities;
@@ -169,6 +169,23 @@ namespace LevelBuilderVR.Behaviours.Tools
                 if (state.IsDragging)
                 {
                     var offset = handPos - state.DragOrigin;
+
+                    if (AxisAlignAction.GetState(hand.handType))
+                    {
+                        var xScore = math.abs(offset.x);
+                        var zScore = math.abs(offset.z);
+
+                        if (xScore > zScore)
+                        {
+                            offset.z = 0f;
+                        }
+                        else
+                        {
+                            var avg = (offset.x + offset.z) * 0.5f;
+                            offset.x = math.sign(offset.x) * avg;
+                            offset.z = math.sign(offset.z) * avg;
+                        }
+                    }
 
                     offset -= state.DragApplied;
 

@@ -9,6 +9,7 @@ namespace LevelBuilderVR.Behaviours.Tools
     {
         public SteamVR_Action_Boolean UseToolAction = SteamVR_Input.GetBooleanAction("UseTool");
         public SteamVR_Action_Boolean MultiSelectAction = SteamVR_Input.GetBooleanAction("MultiSelect");
+        public SteamVR_Action_Boolean AxisAlignAction = SteamVR_Input.GetBooleanAction("AxisAlign");
 
         public string Label;
         public Sprite Icon;
