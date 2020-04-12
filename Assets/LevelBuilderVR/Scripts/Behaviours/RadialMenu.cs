@@ -1,5 +1,5 @@
 ﻿using System;
-using Boo.Lang;
+using System.Collections.Generic;
 using UnityEngine;
 using Valve.VR;
 using Valve.VR.InteractionSystem;
@@ -138,12 +138,7 @@ namespace LevelBuilderVR.Behaviours
                 return;
             }
 
-            Vector3 handPos;
-            try
-            {
-                handPos = ActiveHand.mainRenderModel.GetControllerPosition(ActiveHand.controllerHoverComponent);
-            }
-            catch
+            if (!ActiveHand.TryGetPointerPosition(out var handPos))
             {
                 Hide();
                 return;

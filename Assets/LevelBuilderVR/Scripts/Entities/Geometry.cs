@@ -1,5 +1,6 @@
 ﻿using System;
 using LevelBuilderVR.Behaviours;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Rendering;
@@ -17,6 +18,11 @@ namespace LevelBuilderVR.Entities
         private static EntityArchetype _sHalfEdgeArchetype;
         private static EntityArchetype _sVertexArchetype;
 
+        private static HybridLevel _sHybridLevel;
+        private static EntityQuery _sClosestCornerQuery;
+
+        private static HybridLevel HybridLevel => _sHybridLevel ?? (_sHybridLevel = Object.FindObjectOfType<HybridLevel>());
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void InitializeBeforeScene()
         {
@@ -26,7 +32,8 @@ namespace LevelBuilderVR.Entities
                 typeof(Identifier),
                 typeof(Level),
                 typeof(WithinLevel),
-                typeof(LocalToWorld));
+                typeof(LocalToWorld),
+                typeof(WorldToLocal));
 
             _sRoomArchetype = em.CreateArchetype(
                 typeof(Identifier),
@@ -44,7 +51,15 @@ namespace LevelBuilderVR.Entities
             _sVertexArchetype = em.CreateArchetype(
                 typeof(Identifier),
                 typeof(Vertex),
-                typeof(WithinLevel));
+                typeof(WithinLevel),
+                typeof(RenderMesh),
+                typeof(LocalToWorld),
+                typeof(RenderBounds));
+
+            _sClosestCornerQuery = em.CreateEntityQuery(
+                new EntityQueryDesc {
+                    All = new [] { ComponentType.ReadOnly<Vertex>(), ComponentType.ReadOnly<WithinLevel>() }
+                });
         }
 
         public static Entity CreateLevelTemplate(this EntityManager em, float3 size)
@@ -76,6 +91,11 @@ namespace LevelBuilderVR.Entities
             em.AssignNewIdentifier(level);
 
             em.SetComponentData(level, new LocalToWorld
+            {
+                Value = float4x4.identity
+            });
+
+            em.SetComponentData(level, new WorldToLocal
             {
                 Value = float4x4.identity
             });
@@ -123,7 +143,7 @@ namespace LevelBuilderVR.Entities
             em.SetSharedComponentData(room, new RenderMesh
             {
                 mesh = mesh,
-                material = Object.FindObjectOfType<HybridLevel>().Material,
+                material = HybridLevel.Material,
                 castShadows = ShadowCastingMode.Off,
                 receiveShadows = true
             });
@@ -187,7 +207,87 @@ namespace LevelBuilderVR.Entities
                 Z = z
             });
 
+            em.SetSharedComponentData(vertex, new RenderMesh
+            {
+                mesh = HybridLevel.VertexWidgetMesh,
+                material = HybridLevel.VertexWidgetMaterial,
+                castShadows = ShadowCastingMode.Off,
+                receiveShadows = true
+            });
+
+            em.SetComponentData(vertex, new LocalToWorld
+            {
+                Value = float4x4.TRS(new float3(x, 0f, z), Quaternion.identity, new float3(1f, 1f, 1f))
+            });
+
+            em.SetComponentData(vertex, new RenderBounds
+            {
+                Value = new AABB
+                {
+                    Center = new float3(0f, 0f, 0f),
+                    Extents = new float3(1f, 1f, 1f)
+                }
+            });
+
             return vertex;
+        }
+
+        public static bool SetHovered(this EntityManager em, Entity entity, bool hovered)
+        {
+            var changed = false;
+
+            if (hovered && !em.HasComponent<Hovered>(entity))
+            {
+                em.AddComponent<Hovered>(entity);
+                changed = true;
+            }
+            else if (!hovered && em.HasComponent<Hovered>(entity))
+            {
+                em.RemoveComponent<Hovered>(entity);
+                changed = true;
+            }
+
+            if (changed && em.HasComponent<RenderMesh>(entity))
+            {
+                em.AddComponent<DirtyMaterial>(entity);
+            }
+
+            return changed;
+        }
+
+        public static bool FindClosestVertex(this EntityManager em, Entity level, float3 localPos,
+            out Entity outEntity, out float3 outClosestPoint)
+        {
+            outEntity = Entity.Null;
+            outClosestPoint = localPos;
+
+            var closestDist2 = float.PositiveInfinity;
+
+            using (var entities = _sClosestCornerQuery.ToEntityArray(Allocator.TempJob))
+            {
+                foreach (var entity in entities)
+                {
+                    if (level != em.GetSharedComponentData<WithinLevel>(entity).Level)
+                    {
+                        continue;
+                    }
+
+                    var vertex = em.GetComponentData<Vertex>(entity);
+                    var pos = new float3(vertex.X, math.clamp(localPos.y, vertex.MinY, vertex.MaxY), vertex.Z);
+                    var dist2 = math.lengthsq(pos - localPos);
+
+                    if (dist2 >= closestDist2)
+                    {
+                        continue;
+                    }
+
+                    closestDist2 = dist2;
+                    outClosestPoint = pos;
+                    outEntity = entity;
+                }
+            }
+
+            return outEntity != Entity.Null;
         }
     }
 }

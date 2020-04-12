@@ -1,0 +1,17 @@
+{
+    "name": "Facepunch.StyledRects.Editor",
+    "references": [
+        "GUID:f93b4107706107a4daeaa7f6528a26ac"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

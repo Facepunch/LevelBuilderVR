@@ -21,34 +21,14 @@ namespace LevelBuilderVR.Behaviours
 
         }
 
-        private static bool TryGetPointerPosition(Hand hand, out Vector3 worldPos)
-        {
-            if (hand.isActive && hand.mainRenderModel != null && hand.currentAttachedObject == null)
-            {
-                try
-                {
-                    worldPos = hand.mainRenderModel.GetControllerPosition(hand.controllerHoverComponent);
-                    return true;
-                }
-                catch
-                {
-                    worldPos = hand.transform.position;
-                    return false;
-                }
-            }
-
-            worldPos = hand.transform.position;
-            return false;
-        }
-
         private void Update()
         {
             if (TargetLevel == null) return;
 
             var player = Player.instance;
 
-            var leftValid = TryGetPointerPosition(player.leftHand, out var leftWorldPos);
-            var rightValid = TryGetPointerPosition(player.rightHand, out var rightWorldPos);
+            var leftValid = player.leftHand.TryGetPointerPosition(out var leftWorldPos);
+            var rightValid = player.rightHand.TryGetPointerPosition(out var rightWorldPos);
 
             var leftGrabZoomPressed = leftValid && GrabZoomAction.GetStateDown(SteamVR_Input_Sources.LeftHand);
             var rightGrabZoomPressed = rightValid && GrabZoomAction.GetStateDown(SteamVR_Input_Sources.RightHand);

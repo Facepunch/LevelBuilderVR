@@ -426,7 +426,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Label: Test3
-  Icon: {fileID: 21300000, guid: f52e32f42d3d0b442ba7843c3fa117de, type: 3}
+  Icon: {fileID: 21300000, guid: 385095d67d86f704c885e33e1c88c760, type: 3}
   IsSelected: 0
 --- !u!114 &1542598999
 MonoBehaviour:
@@ -452,12 +452,14 @@ MonoBehaviour:
   m_GameObject: {fileID: 1542598992}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9112681663e3b634f9346e6a1c619fc7, type: 3}
+  m_Script: {fileID: 11500000, guid: 4f5ee3a3835761e4c89d6a141e2050e0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Label: Test1
-  Icon: {fileID: 21300000, guid: 385095d67d86f704c885e33e1c88c760, type: 3}
+  Label: Vertex Edit
+  Icon: {fileID: 21300000, guid: f52e32f42d3d0b442ba7843c3fa117de, type: 3}
   IsSelected: 0
+  InteractRadius: 0.01
+  HapticPulseDurationMicros: 500
 --- !u!1 &1761988834
 GameObject:
   m_ObjectHideFlags: 0
@@ -698,6 +700,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Material: {fileID: 2100000, guid: 466ca5482d753214285dbf47d3b0c0c9, type: 2}
+  VertexWidgetMesh: {fileID: -5495902117074765545, guid: 62fc510b66f27044f956de40f4e9e908,
+    type: 3}
+  VertexWidgetMaterial: {fileID: 2100000, guid: 16469bd2c8164f949b69a8ca531d74e7,
+    type: 2}
+  VertexWidgetHoverMaterial: {fileID: 2100000, guid: 03dbfe5b12bc14145978c603588e58ed,
+    type: 2}
 --- !u!4 &2143160709
 Transform:
   m_ObjectHideFlags: 0

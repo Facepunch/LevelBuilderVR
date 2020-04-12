@@ -1,4 +1,5 @@
-﻿using Unity.Collections;
+﻿using LevelBuilderVR.Behaviours;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Rendering;
@@ -15,6 +16,10 @@ namespace LevelBuilderVR.Systems
         private EntityQuery _changedRoomsQuery;
         private EntityQuery _halfEdgesQuery;
 
+        private static HybridLevel _sHybridLevel;
+
+        private static HybridLevel HybridLevel => _sHybridLevel ?? (_sHybridLevel = Object.FindObjectOfType<HybridLevel>());
+
         protected override void OnCreate()
         {
             _changedRoomsQuery = Entities
@@ -24,7 +29,7 @@ namespace LevelBuilderVR.Systems
                 .ToEntityQuery();
 
             _halfEdgesQuery = Entities
-                .WithAllReadOnly<HalfEdge>()
+                .WithAll<HalfEdge>()
                 .ToEntityQuery();
         }
 
@@ -96,7 +101,9 @@ namespace LevelBuilderVR.Systems
             var getSlopedCeiling = GetComponentDataFromEntity<SlopedCeiling>(true);
 
             var getVertex = GetComponentDataFromEntity<Vertex>(true);
+            var getVertexWritable = GetComponentDataFromEntity<Vertex>(false);
             var getHalfEdge = GetComponentDataFromEntity<HalfEdge>(true);
+            var getHalfEdgeWritable = GetComponentDataFromEntity<HalfEdge>(false);
 
             using (var changedRooms = _changedRoomsQuery.ToEntityArray(Allocator.TempJob))
             using (var halfEdges = _halfEdgesQuery.ToEntityArray(Allocator.TempJob))
@@ -146,35 +153,52 @@ namespace LevelBuilderVR.Systems
                         var u0 = math.dot(tangent, new float3(vertex0.X, 0f, vertex0.Z));
                         var u1 = math.dot(tangent, new float3(vertex1.X, 0f, vertex1.Z));
 
-                        if (!hasFloor || !hasCeiling) continue;
+                        if (hasFloor && hasCeiling)
+                        {
+                            int wall0, wall1, wall2, wall3;
 
-                        int wall0, wall1, wall2, wall3;
+                            vertices[wall0 = vertexOffset++] = VertexToFloat3(in floor, vertex0);
+                            vertices[wall1 = vertexOffset++] = VertexToFloat3(in floor, vertex1);
 
-                        vertices[wall0 = vertexOffset++] = VertexToFloat3(in floor, vertex0);
-                        vertices[wall1 = vertexOffset++] = VertexToFloat3(in floor, vertex1);
+                            normals[wall0] = normal;
+                            normals[wall1] = normal;
 
-                        normals[wall0] = normal;
-                        normals[wall1] = normal;
+                            uvs[wall0] = new float2(u0, vertices[wall0].y);
+                            uvs[wall1] = new float2(u1, vertices[wall1].y);
 
-                        uvs[wall0] = new float2(u0, vertices[wall0].y);
-                        uvs[wall1] = new float2(u1, vertices[wall1].y);
+                            vertices[wall2 = vertexOffset++] = VertexToFloat3(in ceiling, vertex0);
+                            vertices[wall3 = vertexOffset++] = VertexToFloat3(in ceiling, vertex1);
 
-                        vertices[wall2 = vertexOffset++] = VertexToFloat3(in ceiling, vertex0);
-                        vertices[wall3 = vertexOffset++] = VertexToFloat3(in ceiling, vertex1);
+                            normals[wall2] = normal;
+                            normals[wall3] = normal;
 
-                        normals[wall2] = normal;
-                        normals[wall3] = normal;
+                            uvs[wall2] = new float2(u0, vertices[wall2].y);
+                            uvs[wall3] = new float2(u1, vertices[wall3].y);
 
-                        uvs[wall2] = new float2(u0, vertices[wall2].y);
-                        uvs[wall3] = new float2(u1, vertices[wall3].y);
+                            indices[indexOffset++] = wall0;
+                            indices[indexOffset++] = wall2;
+                            indices[indexOffset++] = wall1;
 
-                        indices[indexOffset++] = wall0;
-                        indices[indexOffset++] = wall2;
-                        indices[indexOffset++] = wall1;
+                            indices[indexOffset++] = wall2;
+                            indices[indexOffset++] = wall3;
+                            indices[indexOffset++] = wall1;
 
-                        indices[indexOffset++] = wall2;
-                        indices[indexOffset++] = wall3;
-                        indices[indexOffset++] = wall1;
+                            var floorHeight = vertices[wall0].y;
+                            var ceilingHeight = vertices[wall2].y;
+
+                            halfEdge.MinY = math.min(floorHeight, ceilingHeight);
+                            halfEdge.MaxY = math.max(floorHeight, ceilingHeight);
+                        }
+                        else if (hasFloor)
+                        {
+                            halfEdge.MinY = halfEdge.MaxY = VertexToFloat3(in floor, vertex0).y;
+                        }
+                        else if (hasCeiling)
+                        {
+                            halfEdge.MinY = halfEdge.MaxY = VertexToFloat3(in ceiling, vertex0).y;
+                        }
+
+                        getHalfEdgeWritable[halfEdgeEntity] = halfEdge;
                     }
 
                     var firstFloorIndex = -1;
@@ -260,6 +284,34 @@ namespace LevelBuilderVR.Systems
             var getLocalToWorld = GetComponentDataFromEntity<LocalToWorld>();
 
             Entities
+                .WithAllReadOnly<Vertex, Hovered, DirtyMaterial>()
+                .WithNone<Selected>()
+                .WithAll<RenderMesh>()
+                .ForEach(entity =>
+                {
+                    var renderMesh = EntityManager.GetSharedComponentData<RenderMesh>(entity);
+
+                    renderMesh.material = HybridLevel.VertexWidgetHoverMaterial;
+
+                    PostUpdateCommands.SetSharedComponent(entity, renderMesh);
+                    PostUpdateCommands.RemoveComponent<DirtyMaterial>(entity);
+                });
+
+            Entities
+                .WithAllReadOnly<Vertex, DirtyMaterial>()
+                .WithNone<Hovered, Selected>()
+                .WithAll<RenderMesh>()
+                .ForEach(entity =>
+                {
+                    var renderMesh = EntityManager.GetSharedComponentData<RenderMesh>(entity);
+
+                    renderMesh.material = HybridLevel.VertexWidgetMaterial;
+
+                    PostUpdateCommands.SetSharedComponent(entity, renderMesh);
+                    PostUpdateCommands.RemoveComponent<DirtyMaterial>(entity);
+                });
+
+            Entities
                 .WithAllReadOnly<Room, RenderMesh, WithinLevel>()
                 .WithAll<LocalToWorld, RenderBounds>()
                 .ForEach((Entity entity, ref LocalToWorld localToWorld, ref RenderBounds renderBounds) =>
@@ -273,6 +325,47 @@ namespace LevelBuilderVR.Systems
                     {
                         Center = renderMesh.mesh.bounds.center,
                         Extents = renderMesh.mesh.bounds.extents
+                    };
+                });
+
+            Entities.WithAll<Vertex>()
+                .ForEach((ref Vertex vertex) =>
+                {
+                    vertex.MinY = float.PositiveInfinity;
+                    vertex.MaxY = float.NegativeInfinity;
+                });
+
+            Entities.WithAllReadOnly<HalfEdge>()
+                .ForEach((ref HalfEdge halfEdge) =>
+                {
+                    var vertex = getVertex[halfEdge.Vertex];
+
+                    vertex.MinY = math.min(vertex.MinY, halfEdge.MinY);
+                    vertex.MaxY = math.max(vertex.MaxY, halfEdge.MaxY);
+
+                    getVertexWritable[halfEdge.Vertex] = vertex;
+                });
+
+            Entities
+                .WithAllReadOnly<Vertex, WithinLevel>()
+                .WithAll<LocalToWorld, RenderBounds>()
+                .ForEach((Entity entity, ref Vertex vertex, ref LocalToWorld localToWorld, ref RenderBounds renderBounds) =>
+                {
+                    var withinLevel = EntityManager.GetSharedComponentData<WithinLevel>(entity);
+
+                    var translation = new float3(vertex.X, (vertex.MinY + vertex.MaxY) * 0.5f, vertex.Z);
+                    var scale = new float3(1f / 2f, (vertex.MaxY - vertex.MinY) * 0.5f, 1f / 2f);
+
+                    var levelTransform = getLocalToWorld[withinLevel.Level].Value;
+                    var localTransform = float4x4.TRS(translation, quaternion.identity, scale);
+                    var finalTransform = math.mul(levelTransform, localTransform);
+
+                    localToWorld.Value = finalTransform;
+
+                    renderBounds.Value = new AABB
+                    {
+                        Center = float3.zero,
+                        Extents = scale
                     };
                 });
         }

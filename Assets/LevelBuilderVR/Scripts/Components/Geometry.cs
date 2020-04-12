@@ -111,6 +111,9 @@ namespace LevelBuilderVR
     {
         public float X;
         public float Z;
+
+        public float MinY;
+        public float MaxY;
     }
 
     public struct HalfEdge : IComponentData
@@ -126,6 +129,9 @@ namespace LevelBuilderVR
         /// Next <see cref="HalfEdge"/>, on the right of this one.
         /// </summary>
         public Entity Next;
+
+        public float MinY;
+        public float MaxY;
     }
 
     public struct DirtyMesh : IComponentData
@@ -133,7 +139,17 @@ namespace LevelBuilderVR
 
     }
 
+    public struct DirtyMaterial : IComponentData
+    {
+
+    }
+
     public struct Selected : IComponentData
+    {
+
+    }
+
+    public struct Hovered : IComponentData
     {
 
     }
