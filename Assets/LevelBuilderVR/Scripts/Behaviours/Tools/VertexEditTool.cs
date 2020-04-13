@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using LevelBuilderVR.Entities;
 using Unity.Collections;
 using Unity.Entities;
@@ -181,9 +181,7 @@ namespace LevelBuilderVR.Behaviours.Tools
                         }
                         else
                         {
-                            var avg = (offset.x + offset.z) * 0.5f;
-                            offset.x = math.sign(offset.x) * avg;
-                            offset.z = math.sign(offset.z) * avg;
+                    offset.x = 0f;
                         }
                     }
 
