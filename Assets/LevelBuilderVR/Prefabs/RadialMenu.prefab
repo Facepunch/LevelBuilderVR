@@ -34,8 +34,8 @@ RectTransform:
   m_Father: {fileID: 7542086457655602640}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.75}
-  m_AnchorMax: {x: 0.5, y: 0.75}
+  m_AnchorMin: {x: 0.5, y: 0.8125}
+  m_AnchorMax: {x: 0.5, y: 0.8125}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 256, y: 256}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -83,6 +83,7 @@ MonoBehaviour:
   Icon: {fileID: 7542086456309976351}
   Background: {fileID: 7542086455875244220}
   LabelText: 
+  IsCenter: 0
   DefaultStyle: {fileID: 11400000, guid: 72340020c593bc14391dc5102421704b, type: 2}
   SelectedStyle: {fileID: 11400000, guid: 769bd31430a9e2c418fb94ac1eb85c3f, type: 2}
   RadialMenu: {fileID: 0}
@@ -292,7 +293,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 00762808cbaef0346bbaba55600fc8ba, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Canvas: {fileID: 7542086456646585210}
   ButtonPrototype: {fileID: 7542086455875244210}
   ActiveHand: {fileID: 0}
   SelectedButton: {fileID: 0}

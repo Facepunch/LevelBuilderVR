@@ -11,6 +11,7 @@ namespace LevelBuilderVR.Behaviours
         public StyledRect Background;
 
         public string LabelText;
+        public bool IsCenter;
 
         public RectStyle DefaultStyle;
         public RectStyle SelectedStyle;

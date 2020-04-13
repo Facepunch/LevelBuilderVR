@@ -42,13 +42,14 @@ namespace LevelBuilderVR.Behaviours
             SelectedButton = null;
         }
 
-        public void AddButton(string label, Sprite icon, Action onClick, bool isSelected = false)
+        public void AddButton(string label, Sprite icon, Action onClick, bool isSelected = false, bool isCenter = false)
         {
             var button = Instantiate(ButtonPrototype, ButtonPrototype.transform.parent, false);
             _buttons.Add(button);
 
             button.RadialMenu = this;
             button.LabelText = label;
+            button.IsCenter = isCenter;
             button.Icon.sprite = icon;
             button.OnClicked.AddListener(() => onClick());
             button.gameObject.SetActive(true);
@@ -66,14 +67,11 @@ namespace LevelBuilderVR.Behaviours
             ActiveHand = hand;
             OpenAction = openAction;
 
-            var forward = hand.transform.forward;
+            var forward = hand.transform.position - Player.instance.hmdTransform.position;
 
-            forward.y = 0f;
             forward.Normalize();
-            forward.y = -0.3f;
 
             transform.position = hand.transform.position + forward * 0.2f;
-
             transform.rotation = Quaternion.LookRotation(forward, Vector3.up);
 
             UpdateButtonPositions();
@@ -103,14 +101,17 @@ namespace LevelBuilderVR.Behaviours
 
             foreach (var button in _buttons)
             {
-                var x = Mathf.Sin(angle) * radius + 0.5f;
-                var y = Mathf.Cos(angle) * radius + 0.5f;
+                var x = button.IsCenter ? 0.5f : Mathf.Sin(angle) * radius + 0.5f;
+                var y = button.IsCenter ? 0.5f : Mathf.Cos(angle) * radius + 0.5f;
 
                 var rt = (RectTransform) button.transform;
 
                 rt.anchorMin = rt.anchorMax = new Vector2(x, y);
 
-                angle += deltaAngle;
+                if (!button.IsCenter)
+                {
+                    angle += deltaAngle;
+                }
             }
         }
 
