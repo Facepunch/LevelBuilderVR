@@ -21,7 +21,21 @@ namespace LevelBuilderVR.Behaviours.Tools
 
         protected Player Player => Player.instance;
 
+        protected GrabZoom GrabZoom { get; private set; }
+
         protected Entity Level { get; private set; }
+
+        private void Start()
+        {
+            GrabZoom = FindObjectOfType<GrabZoom>();
+
+            OnStart();
+        }
+
+        protected virtual void OnStart()
+        {
+
+        }
 
         private void Update()
         {

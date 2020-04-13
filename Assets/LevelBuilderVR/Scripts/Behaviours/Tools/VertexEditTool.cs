@@ -14,6 +14,7 @@ namespace LevelBuilderVR.Behaviours.Tools
         private struct HandState
         {
             public Entity Hovered;
+            public bool IsActionHeld;
             public bool IsDragging;
             public bool IsDeselecting;
             public float3 DragOrigin;
@@ -61,7 +62,7 @@ namespace LevelBuilderVR.Behaviours.Tools
             ResetState(ref _rightState);
         }
 
-        private void Start()
+        protected override void OnStart()
         {
             _getSelectedVertices = EntityManager.CreateEntityQuery(
                 new EntityQueryDesc
@@ -137,16 +138,25 @@ namespace LevelBuilderVR.Behaviours.Tools
         {
             if (UseToolAction.GetStateDown(hand.handType))
             {
-                if (MultiSelectAction.GetState(hand.handType))
+                if (GrabZoom == null || !GrabZoom.GrabZoomAction.GetState(hand.handType))
                 {
-                    StartSelecting(ref state);
+                    state.IsActionHeld = true;
+                    
+                    if (MultiSelectAction.GetState(hand.handType))
+                    {
+                        StartSelecting(ref state);
+                    }
+                    else
+                    {
+                        StartDragging(handPos, ref state);
+                    }
                 }
                 else
                 {
-                    StartDragging(handPos, ref state);
+                    state.IsActionHeld = false;
                 }
             }
-            else if (UseToolAction.GetState(hand.handType))
+            else if (state.IsActionHeld && UseToolAction.GetState(hand.handType))
             {
                 if (state.IsDragging)
                 {
@@ -164,8 +174,10 @@ namespace LevelBuilderVR.Behaviours.Tools
                 UpdateSelecting(ref state);
             }
 
-            if (UseToolAction.GetStateUp(hand.handType))
+            if (state.IsActionHeld && UseToolAction.GetStateUp(hand.handType))
             {
+                state.IsActionHeld = false;
+
                 if (state.IsDragging)
                 {
                     return StopDragging(ref state);

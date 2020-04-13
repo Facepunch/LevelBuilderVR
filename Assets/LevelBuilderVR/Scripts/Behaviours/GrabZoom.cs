@@ -1,8 +1,5 @@
-﻿using System.Collections.Generic;
-using Facepunch.UI;
-using TMPro;
+﻿using TMPro;
 using Unity.Mathematics;
-using Unity.Transforms;
 using UnityEngine;
 using UnityEngine.UIElements.Experimental;
 using Valve.VR;
@@ -21,6 +18,7 @@ namespace LevelBuilderVR.Behaviours
         public float ScaleIncrementLog10 = 1f / 4f;
 
         public SteamVR_Action_Boolean GrabZoomAction = SteamVR_Input.GetBooleanAction("GrabZoom");
+        public SteamVR_Action_Boolean UseToolAction = SteamVR_Input.GetBooleanAction("UseTool");
 
         public GameObject TextPrefab;
 
@@ -138,14 +136,14 @@ namespace LevelBuilderVR.Behaviours
             var leftValid = player.leftHand.TryGetPointerPosition(out var leftWorldPos);
             var rightValid = player.rightHand.TryGetPointerPosition(out var rightWorldPos);
 
-            var leftGrabZoomPressed = leftValid && GrabZoomAction.GetStateDown(SteamVR_Input_Sources.LeftHand);
-            var rightGrabZoomPressed = rightValid && GrabZoomAction.GetStateDown(SteamVR_Input_Sources.RightHand);
+            var leftPressed = leftValid && UseToolAction.GetStateDown(SteamVR_Input_Sources.LeftHand) && GrabZoomAction.GetState(SteamVR_Input_Sources.LeftHand);
+            var rightPressed = rightValid && UseToolAction.GetStateDown(SteamVR_Input_Sources.RightHand) && GrabZoomAction.GetState(SteamVR_Input_Sources.LeftHand);
 
-            var leftGrabZoomReleased = leftValid && GrabZoomAction.GetStateUp(SteamVR_Input_Sources.LeftHand);
-            var rightGrabZoomReleased = rightValid && GrabZoomAction.GetStateUp(SteamVR_Input_Sources.RightHand);
+            var leftReleased = leftValid && UseToolAction.GetStateUp(SteamVR_Input_Sources.LeftHand);
+            var rightReleased = rightValid && UseToolAction.GetStateUp(SteamVR_Input_Sources.RightHand);
 
-            var leftGrabZoomHeld = _leftHeld = leftValid && GrabZoomAction.GetState(SteamVR_Input_Sources.LeftHand);
-            var rightGrabZoomHeld = _rightHeld = rightValid && GrabZoomAction.GetState(SteamVR_Input_Sources.RightHand);
+            _leftHeld &= leftValid && UseToolAction.GetState(SteamVR_Input_Sources.LeftHand);
+            _rightHeld &= rightValid && UseToolAction.GetState(SteamVR_Input_Sources.RightHand);
 
             var leftLocalPos = TargetLevel.transform.InverseTransformPoint(leftWorldPos);
             var rightLocalPos = TargetLevel.transform.InverseTransformPoint(rightWorldPos);
@@ -154,17 +152,20 @@ namespace LevelBuilderVR.Behaviours
 
             // New anchor points if anything pressed or released
 
-            if (leftGrabZoomPressed || rightGrabZoomPressed || leftGrabZoomReleased || rightGrabZoomReleased)
+            if (leftPressed || rightPressed || leftReleased || rightReleased)
             {
                 _leftLocalAnchor = leftLocalPos;
                 _rightLocalAnchor = rightLocalPos;
+
+                _leftHeld |= leftPressed;
+                _rightHeld |= rightPressed;
 
                 crosshairsInvalid = true;
             }
 
             // Check for new scale / rotation target
 
-            if (leftGrabZoomHeld && rightGrabZoomHeld)
+            if (_leftHeld && _rightHeld)
             {
                 _worldPivotPos = (leftWorldPos + rightWorldPos) * 0.5f;
 
@@ -275,19 +276,19 @@ namespace LevelBuilderVR.Behaviours
 
             // Grab translation
 
-            if (leftGrabZoomHeld || rightGrabZoomHeld)
+            if (_leftHeld || _rightHeld)
             {
                 Vector3 anchor, pos;
 
-                if (leftGrabZoomHeld && rightGrabZoomHeld)
+                if (_leftHeld && _rightHeld)
                 {
                     anchor = (_leftLocalAnchor + _rightLocalAnchor) * 0.5f;
                     pos = (leftLocalPos + rightLocalPos) * 0.5f;
                 }
                 else
                 {
-                    anchor = leftGrabZoomHeld ? _leftLocalAnchor : _rightLocalAnchor;
-                    pos = leftGrabZoomHeld ? leftLocalPos : rightLocalPos;
+                    anchor = _leftHeld ? _leftLocalAnchor : _rightLocalAnchor;
+                    pos = _leftHeld ? leftLocalPos : rightLocalPos;
                 }
 
                 var localDiff = pos - anchor;
