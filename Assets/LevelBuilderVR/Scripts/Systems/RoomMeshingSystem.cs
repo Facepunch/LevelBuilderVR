@@ -201,71 +201,53 @@ namespace LevelBuilderVR.Systems
                         getHalfEdgeWritable[halfEdgeEntity] = halfEdge;
                     }
 
-                    var firstFloorIndex = -1;
-                    var firstCeilIndex = -1;
-
-                    var curHalfEdgeEntity = firstHalfEdgeEntity;
-                    do
+                    if (hasFloor || hasCeiling)
                     {
-                        var halfEdge = getHalfEdge[curHalfEdgeEntity];
+                        var roomVertices = new NativeArray<float2>(halfEdgeCount, Allocator.TempJob);
+                        var roomVertexIndex = 0;
 
-                        var vertex0 = getVertex[halfEdge.Vertex];
-                        var vertex1 = getVertex[getHalfEdge[halfEdge.Next].Vertex];
+                        var firstFloorCeilingOffset = vertexOffset;
+                        var floorCeilingStride = (hasFloor ? 1 : 0) + (hasCeiling ? 1 : 0);
 
-                        if (hasFloor)
+                        var curHalfEdgeEntity = firstHalfEdgeEntity;
+                        do
                         {
-                            if (firstFloorIndex == -1)
+                            var halfEdge = getHalfEdge[curHalfEdgeEntity];
+                            var vertex = getVertex[halfEdge.Vertex];
+
+                            int floorIndex = -1, ceilingIndex = -1;
+
+                            if (hasFloor)
                             {
-                                firstFloorIndex = vertexOffset;
+                                vertices[floorIndex = vertexOffset++] = VertexToFloat3(in floor, vertex);
+                                normals[floorIndex] = floor.Normal;
+                                uvs[floorIndex] = new float2(vertex.X, vertex.Z);
                             }
 
-                            int floor0, floor1;
-
-                            vertices[floor0 = vertexOffset++] = VertexToFloat3(in floor, vertex0);
-                            vertices[floor1 = vertexOffset++] = VertexToFloat3(in floor, vertex1);
-
-                            normals[floor0] = floor.Normal;
-                            normals[floor1] = floor.Normal;
-
-                            uvs[floor0] = new float2(vertex0.X, vertex0.Z);
-                            uvs[floor1] = new float2(vertex1.X, vertex1.Z);
-
-                            if (curHalfEdgeEntity != firstHalfEdgeEntity)
+                            if (hasCeiling)
                             {
-                                indices[indexOffset++] = firstFloorIndex;
-                                indices[indexOffset++] = floor0;
-                                indices[indexOffset++] = floor1;
+                                vertices[ceilingIndex = vertexOffset++] = VertexToFloat3(in ceiling, vertex);
+                                normals[ceilingIndex] = -ceiling.Normal;
+                                uvs[ceilingIndex] = new float2(vertex.X, vertex.Z);
                             }
+
+                            roomVertices[roomVertexIndex++] = new float2(vertex.X, vertex.Z);
+
+                            curHalfEdgeEntity = halfEdge.Next;
+                        } while (curHalfEdgeEntity != firstHalfEdgeEntity && roomVertexIndex < halfEdgeCount);
+
+                        var triangulationIndices = new NativeArray<int>(Helpers.GetIndexCount(halfEdgeCount), Allocator.TempJob);
+
+                        Helpers.Triangulate(roomVertices, triangulationIndices, out var triangulationIndexCount);
+
+                        for (var i = 0; i < triangulationIndexCount; ++i)
+                        {
+                            indices[indexOffset++] = firstFloorCeilingOffset + triangulationIndices[i] * floorCeilingStride;
                         }
 
-                        if (hasCeiling)
-                        {
-                            if (firstCeilIndex == -1)
-                            {
-                                firstCeilIndex = vertexOffset;
-                            }
-
-                            int ceiling0, ceiling1;
-
-                            vertices[ceiling0 = vertexOffset++] = VertexToFloat3(in ceiling, vertex0);
-                            vertices[ceiling1 = vertexOffset++] = VertexToFloat3(in ceiling, vertex1);
-
-                            normals[ceiling0] = -ceiling.Normal;
-                            normals[ceiling1] = -ceiling.Normal;
-
-                            uvs[ceiling0] = new float2(vertex0.X, vertex0.Z);
-                            uvs[ceiling1] = new float2(vertex1.X, vertex1.Z);
-
-                            if (curHalfEdgeEntity != firstHalfEdgeEntity)
-                            {
-                                indices[indexOffset++] = firstCeilIndex;
-                                indices[indexOffset++] = ceiling1;
-                                indices[indexOffset++] = ceiling0;
-                            }
-                        }
-
-                        curHalfEdgeEntity = halfEdge.Next;
-                    } while (curHalfEdgeEntity != firstHalfEdgeEntity && --halfEdgeCount > 0);
+                        triangulationIndices.Dispose();
+                        roomVertices.Dispose();
+                    }
 
                     var renderMesh = EntityManager.GetSharedComponentData<RenderMesh>(roomEntity);
 
