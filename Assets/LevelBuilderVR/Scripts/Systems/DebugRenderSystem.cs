@@ -5,8 +5,12 @@ namespace LevelBuilderVR.Systems
 {
     public class DebugRenderSystem : ComponentSystem
     {
+        public static bool Enabled;
+
         protected override void OnUpdate()
         {
+            if (!Enabled) return;
+
             Entities.ForEach((Entity entity, ref Vertex corner) =>
             {
                 Debug.DrawLine(new Vector3(corner.X, 0f, corner.Z), new Vector3(corner.X, 8f, corner.Z), Color.green);
