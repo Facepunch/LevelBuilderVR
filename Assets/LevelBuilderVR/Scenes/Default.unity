@@ -518,7 +518,7 @@ MonoBehaviour:
   AxisAlignAction:
     actionPath: /actions/default/in/AxisAlign
     needsReinit: 0
-  Label: 
+  Label: Move View
   Icon: {fileID: 21300000, guid: 19e1ab084fe328a49bd839abce8828aa, type: 3}
   LeftHandActive: 0
   RightHandActive: 0
@@ -582,7 +582,7 @@ MonoBehaviour:
   Label: Vertex Edit
   Icon: {fileID: 21300000, guid: f52e32f42d3d0b442ba7843c3fa117de, type: 3}
   LeftHandActive: 0
-  RightHandActive: 0
+  RightHandActive: 1
   InteractRadius: 0.05
   GridSnap: 0.25
   HapticPulseDurationMicros: 500

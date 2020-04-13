@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using Facepunch.UI;
+using TMPro;
 using UnityEngine;
 using Valve.VR;
 using Valve.VR.InteractionSystem;
@@ -9,6 +11,8 @@ namespace LevelBuilderVR.Behaviours
     public class RadialMenu : MonoBehaviour
     {
         public RadialMenuButton ButtonPrototype;
+        public TMP_Text Label;
+        public StyledRect LabelBack;
 
         [HideInInspector]
         public Hand ActiveHand;
@@ -42,7 +46,7 @@ namespace LevelBuilderVR.Behaviours
             SelectedButton = null;
         }
 
-        public void AddButton(string label, Sprite icon, Action onClick, bool isSelected = false, bool isCenter = false)
+        public void AddButton(string label, Sprite icon, Action onClick, bool isCenter = false)
         {
             var button = Instantiate(ButtonPrototype, ButtonPrototype.transform.parent, false);
             _buttons.Add(button);
@@ -55,11 +59,6 @@ namespace LevelBuilderVR.Behaviours
             button.gameObject.SetActive(true);
 
             _buttonsInvalid = true;
-
-            if (isSelected)
-            {
-                SelectedButton = button;
-            }
         }
 
         public void Show(Hand hand, SteamVR_Action_Boolean openAction)
@@ -73,6 +72,10 @@ namespace LevelBuilderVR.Behaviours
 
             transform.position = hand.transform.position + forward * 0.2f;
             transform.rotation = Quaternion.LookRotation(forward, Vector3.up);
+
+            SelectedButton = null;
+            Label.text = "";
+            LabelBack.enabled = false;
 
             UpdateButtonPositions();
             gameObject.SetActive(true);
@@ -159,7 +162,23 @@ namespace LevelBuilderVR.Behaviours
                 }
             }
 
-            SelectedButton = closest;
+            if (closest != SelectedButton)
+            {
+                SelectedButton = closest;
+                Label.text = closest.LabelText;
+
+                var width = Label.preferredWidth + 32f;
+
+                var min = LabelBack.transform.offsetMin;
+                var max = LabelBack.transform.offsetMax;
+
+                min.x = width * -0.5f;
+                max.x = width * 0.5f;
+
+                LabelBack.transform.offsetMin = min;
+                LabelBack.transform.offsetMax = max;
+                LabelBack.enabled = true;
+            }
         }
     }
 }

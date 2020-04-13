@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9a5467440b07544192c6bd87cc0194b, type: 3}
+  m_Name: TextShadow
+  m_EditorClassIdentifier: 
+  color: {r: 0, g: 0, b: 0, a: 0}
+  enableGradient: 0
+  gradientAngle: 0
+  gradient:
+    keyPointCount: 0
+    _keyPoint0:
+      color: {r: 0, g: 0, b: 0, a: 0}
+      progress: 0
+    _keyPoint1:
+      color: {r: 0, g: 0, b: 0, a: 0}
+      progress: 0
+    _keyPoint2:
+      color: {r: 0, g: 0, b: 0, a: 0}
+      progress: 0
+    _keyPoint3:
+      color: {r: 0, g: 0, b: 0, a: 0}
+      progress: 0
+  borderMode: 0
+  borderColor: {r: 1, g: 1, b: 1, a: 1}
+  borderWidth: 0
+  cornerRadius: 0
+  enableBoxShadow: 1
+  boxShadowColor: {r: 0, g: 0, b: 0, a: 0.7490196}
+  boxShadowBlurRadius: 32
+  boxShadowOffset: {x: 0, y: 0}
+  boxShadowInner: 1

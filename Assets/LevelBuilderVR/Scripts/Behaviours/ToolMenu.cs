@@ -99,7 +99,7 @@ namespace LevelBuilderVR.Behaviours
             foreach (var tool in FindObjectsOfType<Tool>())
             {
                 RadialMenu.AddButton(tool.Label, tool.Icon, () => SetSelectedTool(hand, tool), 
-                    isSelected: GetSelectedTool(hand) == tool, isCenter: tool == DefaultOffhandTool);
+                    isCenter: tool == DefaultOffhandTool);
             }
 
             RadialMenu.Show(hand, OpenAction);
