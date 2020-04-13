@@ -1,3 +1,4 @@
+﻿using System;
 using System.Collections.Generic;
 using LevelBuilderVR.Entities;
 using Unity.Collections;
@@ -30,6 +31,9 @@ namespace LevelBuilderVR.Behaviours.Tools
         private EntityQuery _getSelectedVertices;
         private EntityQuery _getSelectedVerticesWritable;
         private EntityQuery _getHalfEdges;
+
+        private readonly HashSet<Entity> _tempEntitySet = new HashSet<Entity>();
+        private readonly List<Entity> _tempEntityList = new List<Entity>();
 
         protected override void OnUpdate()
         {
@@ -135,133 +139,301 @@ namespace LevelBuilderVR.Behaviours.Tools
             {
                 if (MultiSelectAction.GetState(hand.handType))
                 {
-                    if (state.Hovered != Entity.Null)
-                    {
-                        state.IsDeselecting = EntityManager.GetSelected(state.Hovered);
-                        EntityManager.SetSelected(state.Hovered, !state.IsDeselecting);
-                    }
-                    else
-                    {
-                        state.IsDeselecting = false;
-                    }
-
-                    state.IsDragging = false;
+                    StartSelecting(ref state);
                 }
                 else
                 {
-                    if (state.Hovered == Entity.Null || !EntityManager.GetSelected(state.Hovered))
-                    {
-                        EntityManager.DeselectAll();
-
-                        if (state.Hovered != Entity.Null)
-                        {
-                            EntityManager.SetSelected(state.Hovered, true);
-                        }
-                    }
-
-                    state.IsDragging = true;
-                    state.DragOrigin = handPos;
-                    state.DragApplied = float3.zero;
+                    StartDragging(handPos, ref state);
                 }
             }
             else if (UseToolAction.GetState(hand.handType))
             {
                 if (state.IsDragging)
                 {
-                    var offset = handPos - state.DragOrigin;
+                    var roomsDirty = false;
 
-                    if (AxisAlignAction.GetState(hand.handType))
+                    if (MultiSelectAction.GetStateDown(hand.handType))
                     {
-                        var xScore = math.abs(offset.x);
-                        var zScore = math.abs(offset.z);
-
-                        if (xScore > zScore)
-                        {
-                            offset.z = 0f;
-                        }
-                        else
-                        {
-                    offset.x = 0f;
-                        }
+                        DuplicateVertices(ref state);
+                        roomsDirty = true;
                     }
 
-                    offset -= state.DragApplied;
-
-                    var intOffset = new int3(math.round(offset / GridSnap))
-                    {
-                        y = 0
-                    };
-
-                    if (math.lengthsq(intOffset) <= 0)
-                    {
-                        return false;
-                    }
-
-                    offset = new float3(intOffset) * GridSnap;
-
-                    state.DragApplied += offset;
-
-                    var allSelected = _getSelectedVerticesWritable.ToComponentDataArray<Vertex>(Allocator.TempJob);
-
-                    for (var i = 0; i < allSelected.Length; ++i)
-                    {
-                        var vertex = allSelected[i];
-
-                        vertex.X += offset.x;
-                        vertex.Z += offset.z;
-
-                        allSelected[i] = vertex;
-                    }
-
-                    _getSelectedVerticesWritable.CopyFromComponentDataArray(allSelected);
-
-                    allSelected.Dispose();
-
-                    EntityManager.AddComponent<DirtyMesh>(_getSelectedVertices);
-
-                    return true;
+                    return UpdateDragging(hand, handPos, ref state) || roomsDirty;
                 }
-                else if (state.Hovered != Entity.Null)
+
+                UpdateSelecting(ref state);
+            }
+
+            if (UseToolAction.GetStateUp(hand.handType))
+            {
+                if (state.IsDragging)
                 {
-                    EntityManager.SetSelected(state.Hovered, !state.IsDeselecting);
+                    return StopDragging(ref state);
                 }
             }
 
             return false;
         }
 
-        private readonly HashSet<Entity> _modifiedRoomSet = new HashSet<Entity>();
-        private readonly List<Entity> _modifiedRoomList = new List<Entity>();
+        private void StartSelecting(ref HandState state)
+        {
+            if (state.Hovered != Entity.Null)
+            {
+                state.IsDeselecting = EntityManager.GetSelected(state.Hovered);
+                EntityManager.SetSelected(state.Hovered, !state.IsDeselecting);
+            }
+            else
+            {
+                state.IsDeselecting = false;
+            }
+
+            state.IsDragging = false;
+        }
+
+        private void UpdateSelecting(ref HandState state)
+        {
+            if (state.Hovered != Entity.Null)
+            {
+                EntityManager.SetSelected(state.Hovered, !state.IsDeselecting);
+            }
+        }
+
+        private void StartDragging(float3 handPos, ref HandState state)
+        {
+            if (state.Hovered == Entity.Null || !EntityManager.GetSelected(state.Hovered))
+            {
+                EntityManager.DeselectAll();
+
+                if (state.Hovered != Entity.Null)
+                {
+                    EntityManager.SetSelected(state.Hovered, true);
+                }
+            }
+
+            state.IsDragging = true;
+            state.DragOrigin = handPos;
+            state.DragApplied = float3.zero;
+        }
+
+        private readonly List<List<Entity>> _vertexHalfEdgesPool = new List<List<Entity>>();
+        private readonly List<List<Entity>> _vertexHalfEdgesUsed = new List<List<Entity>>();
+
+        private readonly Dictionary<Entity, List<Entity>> _tempVertexHalfEdgesDict =
+            new Dictionary<Entity, List<Entity>>();
+
+        private void DuplicateVertices(ref HandState state)
+        {
+            // Find all selected vertices that are connected to non-selected ones
+            // For each such vertex:
+            //   Create a new vertex at the original position of that vertex
+            //   If not connected to any other selected vertices:
+            //     Pick half edge that the new vertex can be inserted into, minimizing total length
+            //   Otherwise:
+            //     Insert half edge(s) between selected and new vertex
+
+            var em = EntityManager;
+            var vertexHalfEdgesDict = _tempVertexHalfEdgesDict;
+            var vertexHalfEdgesPool = _vertexHalfEdgesPool;
+            var vertexHalfEdgesUsed = _vertexHalfEdgesUsed;
+
+            var endVertexList = _tempEntityList;
+
+            endVertexList.Clear();
+
+            foreach (var vhe in vertexHalfEdgesUsed)
+            {
+                vertexHalfEdgesPool.Add(vhe);
+            }
+
+            vertexHalfEdgesUsed.Clear();
+            vertexHalfEdgesDict.Clear();
+
+            var allHalfEdgeEntities = _getHalfEdges.ToEntityArray(Allocator.TempJob);
+            var allHalfEdges = _getHalfEdges.ToComponentDataArray<HalfEdge>(Allocator.TempJob);
+
+            // Find all selected vertices connected to a non-selected vertex
+            // Build up a dict of all connecting half edges for each of these "end" vertices
+
+            for (var i = 0; i < allHalfEdges.Length; ++i)
+            {
+                var halfEdge = allHalfEdges[i];
+
+                var nextVertex = em.GetComponentData<HalfEdge>(halfEdge.Next).Vertex;
+                var thisSelected = em.HasComponent<Selected>(halfEdge.Vertex);
+                var nextSelected = em.HasComponent<Selected>(nextVertex);
+
+                if (thisSelected == nextSelected)
+                {
+                    continue;
+                }
+
+                var endVertex = thisSelected ? halfEdge.Vertex : nextVertex;
+
+                if (!vertexHalfEdgesDict.TryGetValue(endVertex, out var vertexHalfEdges))
+                {
+                    endVertexList.Add(endVertex);
+
+                    vertexHalfEdges = new List<Entity>();
+                    vertexHalfEdgesUsed.Add(vertexHalfEdges);
+                    vertexHalfEdgesDict.Add(endVertex, vertexHalfEdges);
+                }
+
+                vertexHalfEdges.Add(allHalfEdgeEntities[i]);
+            }
+
+            allHalfEdgeEntities.Dispose();
+            allHalfEdges.Dispose();
+
+            // TODO
+            var bestHalfEdges = new List<Entity>();
+
+            // For each "end" vertex, find out which edge(s) are the best to insert
+            // the newly created vertex into
+
+            foreach (var entity in endVertexList)
+            {
+                var vertex = em.GetComponentData<Vertex>(entity);
+                var halfEdges = vertexHalfEdgesDict[entity];
+
+                var newPos = new float2(vertex.X - state.DragApplied.x, vertex.Z - state.DragApplied.z);
+                var newVertex = em.CreateVertex(Level, newPos.x, newPos.y);
+
+                em.AddComponent<DirtyMesh>(newVertex);
+
+                bestHalfEdges.Clear();
+                var bestScore = float.PositiveInfinity;
+
+                foreach (var halfEdgeEntity in halfEdges)
+                {
+                    var halfEdge = em.GetComponentData<HalfEdge>(halfEdgeEntity);
+                    var next = em.GetComponentData<HalfEdge>(halfEdge.Next);
+
+                    var vertex0 = em.GetComponentData<Vertex>(halfEdge.Vertex);
+                    var vertex1 = em.GetComponentData<Vertex>(next.Vertex);
+
+                    var pos0 = new float2(vertex0.X, vertex0.Z);
+                    var pos1 = new float2(vertex1.X, vertex1.Z);
+
+                    var score = math.length(newPos - pos0) + math.length(pos1 - newPos) - math.length(pos1 - pos0);
+
+                    if (Math.Abs(score - bestScore) < 1f / 65536f)
+                    {
+                        bestHalfEdges.Add(halfEdgeEntity);
+                    }
+                    else if (score < bestScore)
+                    {
+                        bestScore = score;
+                        bestHalfEdges.Clear();
+                        bestHalfEdges.Add(halfEdgeEntity);
+                    }
+                }
+
+                foreach (var bestHalfEdgeEntity in bestHalfEdges)
+                {
+                    em.InsertHalfEdge(bestHalfEdgeEntity, newVertex);
+                }
+            }
+
+            state.DragOrigin += state.DragApplied;
+            state.DragApplied = float3.zero;
+        }
+
+        private bool UpdateDragging(Hand hand, float3 handPos, ref HandState state)
+        {
+            var offset = handPos - state.DragOrigin;
+
+            if (AxisAlignAction.GetState(hand.handType))
+            {
+                var xScore = math.abs(offset.x);
+                var zScore = math.abs(offset.z);
+
+                if (xScore > zScore)
+                {
+                    offset.z = 0f;
+                }
+                else
+                {
+                    offset.x = 0f;
+                }
+            }
+
+            offset -= state.DragApplied;
+
+            var intOffset = new int3(math.round(offset / GridSnap))
+            {
+                y = 0
+            };
+
+            if (math.lengthsq(intOffset) <= 0)
+            {
+                return false;
+            }
+
+            offset = new float3(intOffset) * GridSnap;
+
+            state.DragApplied += offset;
+
+            var allSelected = _getSelectedVerticesWritable.ToComponentDataArray<Vertex>(Allocator.TempJob);
+
+            for (var i = 0; i < allSelected.Length; ++i)
+            {
+                var vertex = allSelected[i];
+
+                vertex.X += offset.x;
+                vertex.Z += offset.z;
+
+                allSelected[i] = vertex;
+            }
+
+            _getSelectedVerticesWritable.CopyFromComponentDataArray(allSelected);
+
+            allSelected.Dispose();
+
+            EntityManager.AddComponent<DirtyMesh>(_getSelectedVertices);
+
+            return true;
+        }
+
+        private bool StopDragging(ref HandState state)
+        {
+            // Handle merging vertices
+            return false;
+        }
 
         private void UpdateDirtyRooms()
         {
             var halfEdges = _getHalfEdges.ToComponentDataArray<HalfEdge>(Allocator.TempJob);
 
-            _modifiedRoomSet.Clear();
-            _modifiedRoomList.Clear();
+            var modifiedRoomSet = _tempEntitySet;
+            var modifiedRoomList = _tempEntityList;
+
+            modifiedRoomSet.Clear();
+            modifiedRoomList.Clear();
+
+            var em = EntityManager;
 
             foreach (var halfEdge in halfEdges)
             {
-                if (EntityManager.HasComponent<DirtyMesh>(halfEdge.Vertex))
+                if (em.HasComponent<DirtyMesh>(halfEdge.Vertex))
                 {
-                    if (_modifiedRoomSet.Add(halfEdge.Room))
+                    if (modifiedRoomSet.Add(halfEdge.Room))
                     {
-                        _modifiedRoomList.Add(halfEdge.Room);
+                        modifiedRoomList.Add(halfEdge.Room);
                     }
                 }
             }
 
             halfEdges.Dispose();
 
-            var dirtyRooms = new NativeArray<Entity>(_modifiedRoomList.Count, Allocator.TempJob);
+            var dirtyRooms = new NativeArray<Entity>(modifiedRoomList.Count, Allocator.TempJob);
 
-            for (var i = 0; i < _modifiedRoomList.Count; ++i)
+            for (var i = 0; i < modifiedRoomList.Count; ++i)
             {
-                dirtyRooms[i] = _modifiedRoomList[i];
+                dirtyRooms[i] = modifiedRoomList[i];
             }
 
-            EntityManager.RemoveComponent<DirtyMesh>(_getSelectedVertices);
-            EntityManager.AddComponent<DirtyMesh>(dirtyRooms);
+            em.RemoveComponent<DirtyMesh>(_getSelectedVertices);
+            em.AddComponent<DirtyMesh>(dirtyRooms);
 
             dirtyRooms.Dispose();
         }
