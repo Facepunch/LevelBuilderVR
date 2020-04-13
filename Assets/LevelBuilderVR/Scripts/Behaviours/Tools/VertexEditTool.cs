@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using LevelBuilderVR.Entities;
 using Unity.Collections;
@@ -22,8 +22,7 @@ namespace LevelBuilderVR.Behaviours.Tools
             public float3 DragApplied;
         }
 
-        private HandState _leftState;
-        private HandState _rightState;
+        private HandState _state;
 
         public float InteractRadius = 0.05f;
         public float GridSnap = 0.25f;
@@ -37,18 +36,17 @@ namespace LevelBuilderVR.Behaviours.Tools
         private readonly HashSet<Entity> _tempEntitySet = new HashSet<Entity>();
         private readonly List<Entity> _tempEntityList = new List<Entity>();
 
+        public override bool AllowTwoHanded => false;
+
         protected override void OnUpdate()
         {
             var verticesMoved = false;
 
-            if (UpdateHover(Player.leftHand, ref _leftState, out var leftHandPos))
-            {
-                verticesMoved |= UpdateInteract(Player.leftHand, leftHandPos, ref _leftState);
-            }
+            var hand = LeftHandActive ? Player.leftHand : Player.rightHand;
 
-            if (UpdateHover(Player.rightHand, ref _rightState, out var rightHandPos))
+            if (UpdateHover(hand, ref _state, out var leftHandPos))
             {
-                verticesMoved |= UpdateInteract(Player.rightHand, rightHandPos, ref _rightState);
+                verticesMoved |= UpdateInteract(hand, leftHandPos, ref _state);
             }
 
             if (verticesMoved)
@@ -59,8 +57,7 @@ namespace LevelBuilderVR.Behaviours.Tools
 
         protected override void OnDeselected()
         {
-            ResetState(ref _leftState);
-            ResetState(ref _rightState);
+            ResetState(ref _state);
         }
 
         protected override void OnStart()
@@ -146,22 +143,15 @@ namespace LevelBuilderVR.Behaviours.Tools
         {
             if (UseToolAction.GetStateDown(hand.handType))
             {
-                if (GrabZoom == null || !GrabZoom.GrabZoomAction.GetState(hand.handType))
+                state.IsActionHeld = true;
+                
+                if (MultiSelectAction.GetState(hand.handType))
                 {
-                    state.IsActionHeld = true;
-                    
-                    if (MultiSelectAction.GetState(hand.handType))
-                    {
-                        StartSelecting(ref state);
-                    }
-                    else
-                    {
-                        StartDragging(handPos, ref state);
-                    }
+                    StartSelecting(ref state);
                 }
                 else
                 {
-                    state.IsActionHeld = false;
+                    StartDragging(handPos, ref state);
                 }
             }
             else if (state.IsActionHeld && UseToolAction.GetState(hand.handType))
@@ -420,9 +410,12 @@ namespace LevelBuilderVR.Behaviours.Tools
 
         private bool StopDragging(ref HandState state)
         {
-            HybridLevel.SetDragOffset(Vector3.zero);
-
             // Handle merging vertices
+            var allSelected = _getSelectedVerticesWritable.ToComponentDataArray<Vertex>(Allocator.TempJob);
+
+            allSelected.Dispose();
+
+            HybridLevel.SetDragOffset(Vector3.zero);
             return false;
         }
 

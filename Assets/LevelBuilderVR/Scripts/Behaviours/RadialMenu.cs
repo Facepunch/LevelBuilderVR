@@ -104,7 +104,7 @@ namespace LevelBuilderVR.Behaviours
             foreach (var button in _buttons)
             {
                 var x = Mathf.Sin(angle) * radius + 0.5f;
-                var y = -Mathf.Cos(angle) * radius + 0.5f;
+                var y = Mathf.Cos(angle) * radius + 0.5f;
 
                 var rt = (RectTransform) button.transform;
 

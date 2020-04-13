@@ -5,7 +5,7 @@ using Valve.VR.InteractionSystem;
 
 namespace LevelBuilderVR.Behaviours.Tools
 {
-    public class Tool : MonoBehaviour
+    public abstract class Tool : MonoBehaviour
     {
         public SteamVR_Action_Boolean UseToolAction = SteamVR_Input.GetBooleanAction("UseTool");
         public SteamVR_Action_Boolean MultiSelectAction = SteamVR_Input.GetBooleanAction("MultiSelect");
@@ -13,23 +13,27 @@ namespace LevelBuilderVR.Behaviours.Tools
 
         public string Label;
         public Sprite Icon;
-        public bool IsSelected;
 
         private bool _wasSelected;
+
+        public bool LeftHandActive;
+        public bool RightHandActive;
+
+        public bool IsSelected => LeftHandActive || RightHandActive;
 
         protected EntityManager EntityManager => World.DefaultGameObjectInjectionWorld.EntityManager;
 
         protected Player Player => Player.instance;
 
         protected HybridLevel HybridLevel { get; private set; }
-        protected GrabZoom GrabZoom { get; private set; }
 
         protected Entity Level { get; private set; }
+
+        public abstract bool AllowTwoHanded { get; }
 
         private void Start()
         {
             HybridLevel = FindObjectOfType<HybridLevel>();
-            GrabZoom = FindObjectOfType<GrabZoom>();
 
             OnStart();
         }

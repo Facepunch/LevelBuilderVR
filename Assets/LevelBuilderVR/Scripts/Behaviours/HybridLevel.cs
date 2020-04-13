@@ -1,4 +1,5 @@
-﻿using LevelBuilderVR.Entities;
+﻿using System.IO;
+using LevelBuilderVR.Entities;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
@@ -26,6 +27,8 @@ namespace LevelBuilderVR.Behaviours
         [HideInInspector]
         public Material VertexWidgetHoverSelectedMaterial;
 
+        public string FilePath;
+
         private void Start()
         {
             VertexWidgetHoverMaterial = Instantiate(VertexWidgetBaseMaterial);
@@ -37,7 +40,22 @@ namespace LevelBuilderVR.Behaviours
             VertexWidgetHoverSelectedMaterial = Instantiate(VertexWidgetBaseMaterial);
             VertexWidgetHoverSelectedMaterial.SetColor("_Emission", HoverSelectedTint);
 
-            Level = World.DefaultGameObjectInjectionWorld.EntityManager.CreateLevelTemplate(new float3(8f, 3f, 12f));
+            SetDragOffset(Vector3.zero);
+
+            if (!string.IsNullOrEmpty(FilePath) && File.Exists(FilePath))
+            {
+
+            }
+            else
+            {
+                Level = World.DefaultGameObjectInjectionWorld.EntityManager.CreateLevelTemplate(new float3(8f, 3f, 12f));
+            }
+        }
+
+        public void SetDragOffset(Vector3 offset)
+        {
+            VertexWidgetSelectedMaterial.SetVector("_DragOffset", offset);
+            VertexWidgetHoverSelectedMaterial.SetVector("_DragOffset", offset);
         }
 
         private void Update()

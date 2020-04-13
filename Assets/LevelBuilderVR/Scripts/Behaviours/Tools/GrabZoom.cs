@@ -1,4 +1,5 @@
-﻿using TMPro;
+﻿using LevelBuilderVR.Behaviours.Tools;
+using TMPro;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.UIElements.Experimental;
@@ -7,7 +8,7 @@ using Valve.VR.InteractionSystem;
 
 namespace LevelBuilderVR.Behaviours
 {
-    public class GrabZoom : MonoBehaviour
+    public class GrabZoom : Tool
     {
         public HybridLevel TargetLevel;
 
@@ -16,9 +17,6 @@ namespace LevelBuilderVR.Behaviours
         public float MinScaleLog10 = -2;
         public float MaxScaleLog10 = 0;
         public float ScaleIncrementLog10 = 1f / 4f;
-
-        public SteamVR_Action_Boolean GrabZoomAction = SteamVR_Input.GetBooleanAction("GrabZoom");
-        public SteamVR_Action_Boolean UseToolAction = SteamVR_Input.GetBooleanAction("UseTool");
 
         public GameObject TextPrefab;
 
@@ -48,6 +46,8 @@ namespace LevelBuilderVR.Behaviours
         private Vector3 _worldPivotPos;
 
         public float EasingTime = 0.2f;
+
+        public override bool AllowTwoHanded => true;
 
         private void Start()
         {
@@ -133,11 +133,11 @@ namespace LevelBuilderVR.Behaviours
 
             var player = Player.instance;
 
-            var leftValid = player.leftHand.TryGetPointerPosition(out var leftWorldPos);
-            var rightValid = player.rightHand.TryGetPointerPosition(out var rightWorldPos);
+            var leftValid = player.leftHand.TryGetPointerPosition(out var leftWorldPos) && LeftHandActive;
+            var rightValid = player.rightHand.TryGetPointerPosition(out var rightWorldPos) && RightHandActive;
 
-            var leftPressed = leftValid && UseToolAction.GetStateDown(SteamVR_Input_Sources.LeftHand) && GrabZoomAction.GetState(SteamVR_Input_Sources.LeftHand);
-            var rightPressed = rightValid && UseToolAction.GetStateDown(SteamVR_Input_Sources.RightHand) && GrabZoomAction.GetState(SteamVR_Input_Sources.RightHand);
+            var leftPressed = leftValid && UseToolAction.GetStateDown(SteamVR_Input_Sources.LeftHand);
+            var rightPressed = rightValid && UseToolAction.GetStateDown(SteamVR_Input_Sources.RightHand);
 
             var leftReleased = leftValid && UseToolAction.GetStateUp(SteamVR_Input_Sources.LeftHand);
             var rightReleased = rightValid && UseToolAction.GetStateUp(SteamVR_Input_Sources.RightHand);
