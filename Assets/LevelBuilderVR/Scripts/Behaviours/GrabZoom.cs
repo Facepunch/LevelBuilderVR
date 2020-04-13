@@ -137,7 +137,7 @@ namespace LevelBuilderVR.Behaviours
             var rightValid = player.rightHand.TryGetPointerPosition(out var rightWorldPos);
 
             var leftPressed = leftValid && UseToolAction.GetStateDown(SteamVR_Input_Sources.LeftHand) && GrabZoomAction.GetState(SteamVR_Input_Sources.LeftHand);
-            var rightPressed = rightValid && UseToolAction.GetStateDown(SteamVR_Input_Sources.RightHand) && GrabZoomAction.GetState(SteamVR_Input_Sources.LeftHand);
+            var rightPressed = rightValid && UseToolAction.GetStateDown(SteamVR_Input_Sources.RightHand) && GrabZoomAction.GetState(SteamVR_Input_Sources.RightHand);
 
             var leftReleased = leftValid && UseToolAction.GetStateUp(SteamVR_Input_Sources.LeftHand);
             var rightReleased = rightValid && UseToolAction.GetStateUp(SteamVR_Input_Sources.RightHand);
