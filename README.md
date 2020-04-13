@@ -9,9 +9,11 @@ Only knuckles controls listed here for now:
 * **Snap Turn**: Tap analog stick west / east
 
 ### Level View
-* **Pan**: Hold grip with one hand, drag
-* **Rotate**: Hold grips with both hands in a horizontal plane, pivot
-* **Scale**: Hold grips with both hands in a vertical line, move towards / apart
+Hold the grip to enable these controls for that hand:
+
+* **Pan**: Hold trigger with one hand, drag
+* **Rotate**: Hold triggers with both hands in a horizontal plane, pivot
+* **Scale**: Hold triggers with both hands in a vertical line, move towards / apart
 
 ### Tool Selection
 * **Tool Menu Wheel**: Hold analog stick south
@@ -19,8 +21,9 @@ Only knuckles controls listed here for now:
 ### Vertex Tool
 Used to select, move, duplicate and delete vertices (room corners).
 
-* **Move**: Hold trigger while hovering over a vertex, drag.
-* **Multi-Select**: Hold A, then use trigger to select / deselect vertices.
-* **Axis-Aligned Drag**: Hold B while dragging.
+* **Move**: Hold trigger while hovering over a vertex, drag
+* **Multi-Select**: Hold A, then use trigger to select / deselect vertices
+* **Axis-Aligned Drag**: Hold B while dragging
+* **Duplicate**: Start dragging one or more vertices, then press A
 
-Duplicating / deleting vertices is TODO
+Deleting vertices is TODO
