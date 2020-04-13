@@ -363,7 +363,7 @@ namespace LevelBuilderVR.Systems
                     var withinLevel = EntityManager.GetSharedComponentData<WithinLevel>(entity);
 
                     var translation = new float3(vertex.X, (vertex.MinY + vertex.MaxY) * 0.5f, vertex.Z);
-                    var scale = new float3(1f / 2f, (vertex.MaxY - vertex.MinY) * 0.5f, 1f / 2f);
+                    var scale = new float3(1f, (vertex.MaxY - vertex.MinY) * 0.5f, 1f);
 
                     var levelTransform = getLocalToWorld[withinLevel.Level].Value;
                     var localTransform = float4x4.TRS(translation, quaternion.identity, scale);

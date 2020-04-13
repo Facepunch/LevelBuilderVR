@@ -21,12 +21,14 @@ namespace LevelBuilderVR.Behaviours.Tools
 
         protected Player Player => Player.instance;
 
+        protected HybridLevel HybridLevel { get; private set; }
         protected GrabZoom GrabZoom { get; private set; }
 
         protected Entity Level { get; private set; }
 
         private void Start()
         {
+            HybridLevel = FindObjectOfType<HybridLevel>();
             GrabZoom = FindObjectOfType<GrabZoom>();
 
             OnStart();
@@ -37,11 +39,21 @@ namespace LevelBuilderVR.Behaviours.Tools
 
         }
 
+        protected virtual void OnSelectLevel(Entity level)
+        {
+
+        }
+
         private void Update()
         {
             if (Level == Entity.Null)
             {
-                Level = FindObjectOfType<HybridLevel>().Level;
+                Level = HybridLevel.Level;
+
+                if (Level != Entity.Null)
+                {
+                    OnSelectLevel(Level);
+                }
             }
 
             if (IsSelected && !_wasSelected)

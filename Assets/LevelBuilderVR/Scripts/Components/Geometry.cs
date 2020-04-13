@@ -153,9 +153,4 @@ namespace LevelBuilderVR
     {
 
     }
-
-    public struct Drag : IComponentData
-    {
-        public float3 Offset;
-    }
 }

@@ -1,10 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using LevelBuilderVR.Entities;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Transforms;
+using UnityEngine;
 using Valve.VR.InteractionSystem;
 
 namespace LevelBuilderVR.Behaviours.Tools
@@ -67,20 +68,27 @@ namespace LevelBuilderVR.Behaviours.Tools
             _getSelectedVertices = EntityManager.CreateEntityQuery(
                 new EntityQueryDesc
                 {
-                    All = new[] { ComponentType.ReadOnly<Selected>(), ComponentType.ReadOnly<Vertex>() }
+                    All = new[] { ComponentType.ReadOnly<Selected>(), ComponentType.ReadOnly<Vertex>(), ComponentType.ReadOnly<WithinLevel>()  }
                 });
 
             _getSelectedVerticesWritable = EntityManager.CreateEntityQuery(
                 new EntityQueryDesc
                 {
-                    All = new[] { ComponentType.ReadOnly<Selected>(), typeof(Vertex) }
+                    All = new[] { ComponentType.ReadOnly<Selected>(), ComponentType.ReadOnly<WithinLevel>(), typeof(Vertex) }
                 });
 
             _getHalfEdges = EntityManager.CreateEntityQuery(
                 new EntityQueryDesc
                 {
-                    All = new[] { ComponentType.ReadOnly<HalfEdge>() }
+                    All = new[] { ComponentType.ReadOnly<HalfEdge>(), ComponentType.ReadOnly<WithinLevel>() }
                 });
+        }
+
+        protected override void OnSelectLevel(Entity level)
+        {
+            _getSelectedVertices.SetSharedComponentFilter(new WithinLevel(Level));
+            _getSelectedVerticesWritable.SetSharedComponentFilter(new WithinLevel(Level));
+            _getHalfEdges.SetSharedComponentFilter(new WithinLevel(Level));
         }
 
         private bool UpdateHover(Hand hand, ref HandState state, out float3 localHandPos)
@@ -225,6 +233,8 @@ namespace LevelBuilderVR.Behaviours.Tools
             state.IsDragging = true;
             state.DragOrigin = handPos;
             state.DragApplied = float3.zero;
+
+            HybridLevel.SetDragOffset(-state.DragApplied);
         }
 
         private readonly List<List<Entity>> _vertexHalfEdgesPool = new List<List<Entity>>();
@@ -348,6 +358,7 @@ namespace LevelBuilderVR.Behaviours.Tools
 
             state.DragOrigin += state.DragApplied;
             state.DragApplied = float3.zero;
+            HybridLevel.SetDragOffset(-state.DragApplied);
         }
 
         private bool UpdateDragging(Hand hand, float3 handPos, ref HandState state)
@@ -384,6 +395,7 @@ namespace LevelBuilderVR.Behaviours.Tools
             offset = new float3(intOffset) * GridSnap;
 
             state.DragApplied += offset;
+            HybridLevel.SetDragOffset(-state.DragApplied);
 
             var allSelected = _getSelectedVerticesWritable.ToComponentDataArray<Vertex>(Allocator.TempJob);
 
@@ -408,6 +420,8 @@ namespace LevelBuilderVR.Behaviours.Tools
 
         private bool StopDragging(ref HandState state)
         {
+            HybridLevel.SetDragOffset(Vector3.zero);
+
             // Handle merging vertices
             return false;
         }

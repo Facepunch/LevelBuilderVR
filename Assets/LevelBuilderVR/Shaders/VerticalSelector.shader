@@ -7,6 +7,8 @@
         _MainTex ("Albedo (RGB)", 2D) = "white" {}
         _Glossiness ("Smoothness", Range(0,1)) = 0.5
         _Metallic ("Metallic", Range(0,1)) = 0.0
+
+        _DragOffset ("Drag Offset", Vector) = (0, 0, 0)
     }
     SubShader
     {
@@ -32,6 +34,8 @@
         fixed4 _Color;
         fixed4 _Emission;
 
+        float3 _DragOffset;
+
         // Add instancing support for this shader. You need to check 'Enable Instancing' on materials that use the shader.
         // See https://docs.unity3d.com/Manual/GPUInstancing.html for more information about instancing.
         // #pragma instancing_options assumeuniformscaling
@@ -53,6 +57,12 @@
             float offset = src - ref;
 
             v.vertex.y = ref + offset * scaleX / (scaleY);
+
+            src = v.vertex.x;
+            ref = round(src);
+            v.vertex.x -= ref;
+
+            v.vertex.xyz += ref * _DragOffset;
         }
 
         void surf (Input IN, inout SurfaceOutputStandard o)

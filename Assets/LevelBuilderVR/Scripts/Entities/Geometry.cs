@@ -219,7 +219,7 @@ namespace LevelBuilderVR.Entities
                 mesh = HybridLevel.VertexWidgetMesh,
                 material = HybridLevel.VertexWidgetBaseMaterial,
                 castShadows = ShadowCastingMode.Off,
-                receiveShadows = true
+                receiveShadows = false
             });
 
             em.SetComponentData(vertex, new LocalToWorld

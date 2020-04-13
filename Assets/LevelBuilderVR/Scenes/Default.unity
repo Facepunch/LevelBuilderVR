@@ -380,6 +380,9 @@ MonoBehaviour:
   GrabZoomAction:
     actionPath: /actions/default/in/GrabZoom
     needsReinit: 0
+  UseToolAction:
+    actionPath: /actions/default/in/UseTool
+    needsReinit: 0
   TextPrefab: {fileID: 5179937962962327403, guid: 66c629da605cebc41b293ff4ccfbd9bc,
     type: 3}
   CrosshairGrabTexture: {fileID: 2800000, guid: bae40348b7f2fdb49a668be8b40bbf9d,
@@ -426,6 +429,9 @@ MonoBehaviour:
     needsReinit: 0
   MultiSelectAction:
     actionPath: /actions/default/in/MultiSelect
+    needsReinit: 0
+  AxisAlignAction:
+    actionPath: /actions/default/in/AxisAlign
     needsReinit: 0
   Label: Vertex Edit
   Icon: {fileID: 21300000, guid: f52e32f42d3d0b442ba7843c3fa117de, type: 3}
@@ -684,6 +690,7 @@ MonoBehaviour:
     type: 2}
   VertexWidgetSelectedMaterial: {fileID: 0}
   VertexWidgetHoverSelectedMaterial: {fileID: 0}
+  FilePath: 
 --- !u!4 &2143160709
 Transform:
   m_ObjectHideFlags: 0
