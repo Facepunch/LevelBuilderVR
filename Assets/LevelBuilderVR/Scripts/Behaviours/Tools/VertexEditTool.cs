@@ -29,9 +29,12 @@ namespace LevelBuilderVR.Behaviours.Tools
 
         public ushort HapticPulseDurationMicros = 500;
 
+        private EntityQuery _getVertices;
         private EntityQuery _getSelectedVertices;
+        private EntityQuery _getUnselectedVertices;
         private EntityQuery _getSelectedVerticesWritable;
         private EntityQuery _getHalfEdges;
+        private EntityQuery _getHalfEdgesWritable;
 
         private readonly HashSet<Entity> _tempEntitySet = new HashSet<Entity>();
         private readonly List<Entity> _tempEntityList = new List<Entity>();
@@ -62,10 +65,23 @@ namespace LevelBuilderVR.Behaviours.Tools
 
         protected override void OnStart()
         {
+            _getVertices = EntityManager.CreateEntityQuery(
+                new EntityQueryDesc
+                {
+                    All = new[] { ComponentType.ReadOnly<Vertex>(), ComponentType.ReadOnly<WithinLevel>() }
+                });
+
             _getSelectedVertices = EntityManager.CreateEntityQuery(
                 new EntityQueryDesc
                 {
                     All = new[] { ComponentType.ReadOnly<Selected>(), ComponentType.ReadOnly<Vertex>(), ComponentType.ReadOnly<WithinLevel>()  }
+                });
+
+            _getUnselectedVertices = EntityManager.CreateEntityQuery(
+                new EntityQueryDesc
+                {
+                    All = new[] { ComponentType.ReadOnly<Vertex>(), ComponentType.ReadOnly<WithinLevel>() },
+                    None = new [] { ComponentType.ReadOnly<Selected>() }
                 });
 
             _getSelectedVerticesWritable = EntityManager.CreateEntityQuery(
@@ -79,13 +95,21 @@ namespace LevelBuilderVR.Behaviours.Tools
                 {
                     All = new[] { ComponentType.ReadOnly<HalfEdge>(), ComponentType.ReadOnly<WithinLevel>() }
                 });
+
+            _getHalfEdgesWritable = EntityManager.CreateEntityQuery(
+                new EntityQueryDesc
+                {
+                    All = new[] { typeof(HalfEdge), ComponentType.ReadOnly<WithinLevel>() }
+                });
         }
 
         protected override void OnSelectLevel(Entity level)
         {
             _getSelectedVertices.SetSharedComponentFilter(new WithinLevel(Level));
+            _getUnselectedVertices.SetSharedComponentFilter(new WithinLevel(Level));
             _getSelectedVerticesWritable.SetSharedComponentFilter(new WithinLevel(Level));
             _getHalfEdges.SetSharedComponentFilter(new WithinLevel(Level));
+            _getHalfEdgesWritable.SetSharedComponentFilter(new WithinLevel(Level));
         }
 
         private bool UpdateHover(Hand hand, ref HandState state, out float3 localHandPos)
@@ -408,15 +432,149 @@ namespace LevelBuilderVR.Behaviours.Tools
             return true;
         }
 
-        private bool StopDragging(ref HandState state)
+        private const int HashResolution = 256;
+
+        private static int2 GetPositionHash(Vertex vertex)
+        {
+            return new int2((int) math.round(vertex.X * HashResolution), (int) math.round(vertex.Z * HashResolution));
+        }
+
+        private readonly Dictionary<int2, Entity> _uniquePositions = new Dictionary<int2, Entity>();
+        private readonly HashSet<Entity> _referencedVertices = new HashSet<Entity>();
+        private readonly HashSet<Entity> _toDestroySet = new HashSet<Entity>();
+        private readonly List<Entity> _toDestroyList = new List<Entity>();
+
+        private bool CleanupGeometry()
         {
             // Handle merging vertices
-            var allSelected = _getSelectedVerticesWritable.ToComponentDataArray<Vertex>(Allocator.TempJob);
 
-            allSelected.Dispose();
+            var meshChanged = false;
 
+            do
+            {
+                var allSelected = _getSelectedVertices.ToEntityArray(Allocator.TempJob);
+                var allSelectedVertices = _getSelectedVertices.ToComponentDataArray<Vertex>(Allocator.TempJob);
+
+                _uniquePositions.Clear();
+                _referencedVertices.Clear();
+                _toDestroySet.Clear();
+                _toDestroyList.Clear();
+
+                for (var i = 0; i < allSelected.Length; ++i)
+                {
+                    var hash = GetPositionHash(allSelectedVertices[i]);
+                    if (!_uniquePositions.ContainsKey(hash))
+                    {
+                        var vertex = allSelected[i];
+
+                        _uniquePositions.Add(hash, vertex);
+                    }
+                }
+
+                allSelected.Dispose();
+                allSelectedVertices.Dispose();
+
+                var em = EntityManager;
+
+                var allHalfEdges = _getHalfEdgesWritable.ToComponentDataArray<HalfEdge>(Allocator.TempJob);
+
+                var merged = false;
+
+                for (var i = 0; i < allHalfEdges.Length; ++i)
+                {
+                    var halfEdge = allHalfEdges[i];
+                    var hash = GetPositionHash(em.GetComponentData<Vertex>(halfEdge.Vertex));
+
+                    if (_uniquePositions.TryGetValue(hash, out var vertex) && vertex != halfEdge.Vertex)
+                    {
+                        merged = true;
+
+                        em.AddComponent<DirtyMesh>(halfEdge.Room);
+
+                        halfEdge.Vertex = vertex;
+                        allHalfEdges[i] = halfEdge;
+                    }
+                }
+
+                if (merged)
+                {
+                    _getHalfEdgesWritable.CopyFromComponentDataArray(allHalfEdges);
+
+                    allHalfEdges.Dispose();
+                    allHalfEdges = _getHalfEdgesWritable.ToComponentDataArray<HalfEdge>(Allocator.TempJob);
+                }
+
+                var edgeRemoved = false;
+
+                for (var i = 0; i < allHalfEdges.Length; ++i)
+                {
+                    var halfEdge = allHalfEdges[i];
+                    var nextHalfEdge = em.GetComponentData<HalfEdge>(halfEdge.Next);
+                    var next2HalfEdge = em.GetComponentData<HalfEdge>(nextHalfEdge.Next);
+
+                    if (nextHalfEdge.Vertex == next2HalfEdge.Vertex || !em.Exists(nextHalfEdge.Vertex))
+                    {
+                        edgeRemoved = true;
+
+                        em.AddComponent<DirtyMesh>(halfEdge.Room);
+
+                        if (_toDestroySet.Add(halfEdge.Next))
+                        {
+                            _toDestroyList.Add(halfEdge.Next);
+                        }
+
+                        // TODO: maybe make sure we set this to the next _valid_ half edge
+
+                        halfEdge.Next = nextHalfEdge.Next;
+                        allHalfEdges[i] = halfEdge;
+                    }
+                    else
+                    {
+                        _referencedVertices.Add(nextHalfEdge.Vertex);
+                    }
+                }
+
+                if (edgeRemoved)
+                {
+                    _getHalfEdgesWritable.CopyFromComponentDataArray(allHalfEdges);
+                }
+
+                allHalfEdges.Dispose();
+
+                em.DestroyEntities(_toDestroyList);
+
+                _toDestroyList.Clear();
+                _toDestroySet.Clear();
+
+                if (!merged && !edgeRemoved)
+                {
+                    return meshChanged;
+                }
+
+                var allVertices = _getVertices.ToEntityArray(Allocator.TempJob);
+
+                foreach (var vertex in allVertices)
+                {
+                    if (!_referencedVertices.Contains(vertex))
+                    {
+                        _toDestroyList.Add(vertex);
+                    }
+                }
+
+                allVertices.Dispose();
+
+                em.DestroyEntities(_toDestroyList);
+                _toDestroyList.Clear();
+
+                meshChanged = true;
+            } while (true);
+        }
+
+        private bool StopDragging(ref HandState state)
+        {
             HybridLevel.SetDragOffset(Vector3.zero);
-            return false;
+
+            return CleanupGeometry();
         }
 
         private void UpdateDirtyRooms()

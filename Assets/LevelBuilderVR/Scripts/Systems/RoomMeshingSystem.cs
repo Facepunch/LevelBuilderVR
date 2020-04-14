@@ -13,6 +13,8 @@ namespace LevelBuilderVR.Systems
         private const int MaxVertices = 1024;
         private const int MaxIndices = MaxVertices * 4;
 
+        private static readonly int[] _sEmptyIndices = new int[0];
+
         private EntityQuery _changedRoomsQuery;
         private EntityQuery _halfEdgesQuery;
 
@@ -206,7 +208,8 @@ namespace LevelBuilderVR.Systems
                         var roomVertices = new NativeArray<float2>(halfEdgeCount, Allocator.TempJob);
                         var roomVertexIndex = 0;
 
-                        var firstFloorCeilingOffset = vertexOffset;
+                        var firstFloorOffset = vertexOffset;
+                        var firstCeilingOffset = vertexOffset + (hasFloor ? 1 : 0);
                         var floorCeilingStride = (hasFloor ? 1 : 0) + (hasCeiling ? 1 : 0);
 
                         var curHalfEdgeEntity = firstHalfEdgeEntity;
@@ -240,9 +243,20 @@ namespace LevelBuilderVR.Systems
 
                         Helpers.Triangulate(roomVertices, triangulationIndices, out var triangulationIndexCount);
 
-                        for (var i = 0; i < triangulationIndexCount; ++i)
+                        if (hasFloor)
                         {
-                            indices[indexOffset++] = firstFloorCeilingOffset + triangulationIndices[i] * floorCeilingStride;
+                            for (var i = 0; i < triangulationIndexCount; ++i)
+                            {
+                                indices[indexOffset++] = firstFloorOffset + triangulationIndices[i] * floorCeilingStride;
+                            }
+                        }
+
+                        if (hasCeiling)
+                        {
+                            for (var i = triangulationIndexCount - 1; i >= 0; --i)
+                            {
+                                indices[indexOffset++] = firstCeilingOffset + triangulationIndices[i] * floorCeilingStride;
+                            }
                         }
 
                         triangulationIndices.Dispose();
@@ -251,10 +265,11 @@ namespace LevelBuilderVR.Systems
 
                     var renderMesh = EntityManager.GetSharedComponentData<RenderMesh>(roomEntity);
 
+                    renderMesh.mesh.SetIndices(_sEmptyIndices, MeshTopology.Triangles, 0);
                     renderMesh.mesh.SetVertices(vertices, 0, vertexOffset);
                     renderMesh.mesh.SetNormals(normals, 0, vertexOffset);
                     renderMesh.mesh.SetUVs(0, uvs, 0, vertexOffset);
-                    renderMesh.mesh.SetIndices(indices, 0, indexOffset, MeshTopology.Triangles, 0);
+                    renderMesh.mesh.SetIndices(indices, 0, indexOffset, MeshTopology.Triangles, 0, calculateBounds: false);
                 }
 
                 vertices.Dispose();

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using LevelBuilderVR.Behaviours;
 using Unity.Collections;
 using Unity.Entities;
@@ -317,6 +318,27 @@ namespace LevelBuilderVR.Entities
             }
 
             return outEntity != Entity.Null;
+        }
+
+        public static bool DestroyEntities(this EntityManager em, List<Entity> entities)
+        {
+            if (entities.Count == 0)
+            {
+                return false;
+            }
+
+            var toDestroy = new NativeArray<Entity>(entities.Count, Allocator.TempJob);
+
+            for (var i = 0; i < entities.Count; ++i)
+            {
+                toDestroy[i] = entities[i];
+            }
+
+            em.DestroyEntity(toDestroy);
+
+            toDestroy.Dispose();
+
+            return true;
         }
     }
 }
