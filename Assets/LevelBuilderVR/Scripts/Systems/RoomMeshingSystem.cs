@@ -8,6 +8,7 @@ using UnityEngine;
 
 namespace LevelBuilderVR.Systems
 {
+    [UpdateAfter(typeof(DirtyVertexSystem)), UpdateAfter(typeof(WidgetVisibleSystem))]
     public class RoomMeshingSystem : ComponentSystem
     {
         private const int MaxVertices = 1024;
@@ -17,10 +18,6 @@ namespace LevelBuilderVR.Systems
 
         private EntityQuery _changedRoomsQuery;
         private EntityQuery _halfEdgesQuery;
-
-        private static HybridLevel _sHybridLevel;
-
-        private static HybridLevel HybridLevel => _sHybridLevel ?? (_sHybridLevel = Object.FindObjectOfType<HybridLevel>());
 
         protected override void OnCreate()
         {
@@ -107,9 +104,16 @@ namespace LevelBuilderVR.Systems
             var getHalfEdge = GetComponentDataFromEntity<HalfEdge>(true);
             var getHalfEdgeWritable = GetComponentDataFromEntity<HalfEdge>(false);
 
+            var anyChangedRooms = false;
+
             using (var changedRooms = _changedRoomsQuery.ToEntityArray(Allocator.TempJob))
             using (var halfEdges = _halfEdgesQuery.ToEntityArray(Allocator.TempJob))
             {
+                if (changedRooms.Length > 0)
+                {
+                    anyChangedRooms = true;
+                }
+
                 var vertices = new NativeArray<float3>(MaxVertices, Allocator.TempJob);
                 var normals = new NativeArray<float3>(MaxVertices, Allocator.TempJob);
                 var uvs = new NativeArray<float2>(MaxVertices, Allocator.TempJob);
@@ -278,62 +282,32 @@ namespace LevelBuilderVR.Systems
                 indices.Dispose();
             }
 
+            if (anyChangedRooms)
+            {
+                // Update HalfEdge and Vertex Min/MaxY
+
+                Entities.WithAll<Vertex>()
+                    .ForEach((ref Vertex vertex) =>
+                    {
+                        vertex.MinY = float.PositiveInfinity;
+                        vertex.MaxY = float.NegativeInfinity;
+                    });
+
+                Entities.WithAllReadOnly<HalfEdge>()
+                    .ForEach((ref HalfEdge halfEdge) =>
+                    {
+                        var vertex = getVertex[halfEdge.Vertex];
+
+                        vertex.MinY = math.min(vertex.MinY, halfEdge.MinY);
+                        vertex.MaxY = math.max(vertex.MaxY, halfEdge.MaxY);
+
+                        getVertexWritable[halfEdge.Vertex] = vertex;
+                    });
+            }
+
+            // Update Room and Vertex LocalToWorld / RenderBounds
+
             var getLocalToWorld = GetComponentDataFromEntity<LocalToWorld>();
-
-            Entities
-                .WithAllReadOnly<Vertex, Hovered, DirtyMaterial>()
-                .WithNone<Selected>()
-                .WithAll<RenderMesh>()
-                .ForEach(entity =>
-                {
-                    var renderMesh = EntityManager.GetSharedComponentData<RenderMesh>(entity);
-
-                    renderMesh.material = HybridLevel.VertexWidgetHoverMaterial;
-
-                    PostUpdateCommands.SetSharedComponent(entity, renderMesh);
-                    PostUpdateCommands.RemoveComponent<DirtyMaterial>(entity);
-                });
-
-            Entities
-                .WithAllReadOnly<Vertex, Selected, DirtyMaterial>()
-                .WithNone<Hovered>()
-                .WithAll<RenderMesh>()
-                .ForEach(entity =>
-                {
-                    var renderMesh = EntityManager.GetSharedComponentData<RenderMesh>(entity);
-
-                    renderMesh.material = HybridLevel.VertexWidgetSelectedMaterial;
-
-                    PostUpdateCommands.SetSharedComponent(entity, renderMesh);
-                    PostUpdateCommands.RemoveComponent<DirtyMaterial>(entity);
-                });
-
-            Entities
-                .WithAllReadOnly<Vertex, Hovered, Selected, DirtyMaterial>()
-                .WithAll<RenderMesh>()
-                .ForEach(entity =>
-                {
-                    var renderMesh = EntityManager.GetSharedComponentData<RenderMesh>(entity);
-
-                    renderMesh.material = HybridLevel.VertexWidgetHoverSelectedMaterial;
-
-                    PostUpdateCommands.SetSharedComponent(entity, renderMesh);
-                    PostUpdateCommands.RemoveComponent<DirtyMaterial>(entity);
-                });
-
-            Entities
-                .WithAllReadOnly<Vertex, DirtyMaterial>()
-                .WithNone<Hovered, Selected>()
-                .WithAll<RenderMesh>()
-                .ForEach(entity =>
-                {
-                    var renderMesh = EntityManager.GetSharedComponentData<RenderMesh>(entity);
-
-                    renderMesh.material = HybridLevel.VertexWidgetBaseMaterial;
-
-                    PostUpdateCommands.SetSharedComponent(entity, renderMesh);
-                    PostUpdateCommands.RemoveComponent<DirtyMaterial>(entity);
-                });
 
             Entities
                 .WithAllReadOnly<Room, RenderMesh, WithinLevel>()
@@ -350,24 +324,6 @@ namespace LevelBuilderVR.Systems
                         Center = renderMesh.mesh.bounds.center,
                         Extents = renderMesh.mesh.bounds.extents
                     };
-                });
-
-            Entities.WithAll<Vertex>()
-                .ForEach((ref Vertex vertex) =>
-                {
-                    vertex.MinY = float.PositiveInfinity;
-                    vertex.MaxY = float.NegativeInfinity;
-                });
-
-            Entities.WithAllReadOnly<HalfEdge>()
-                .ForEach((ref HalfEdge halfEdge) =>
-                {
-                    var vertex = getVertex[halfEdge.Vertex];
-
-                    vertex.MinY = math.min(vertex.MinY, halfEdge.MinY);
-                    vertex.MaxY = math.max(vertex.MaxY, halfEdge.MaxY);
-
-                    getVertexWritable[halfEdge.Vertex] = vertex;
                 });
 
             Entities

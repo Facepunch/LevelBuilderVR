@@ -29,65 +29,44 @@ namespace LevelBuilderVR.Behaviours.Tools
 
         public ushort HapticPulseDurationMicros = 500;
 
-        private EntityQuery _getVertices;
         private EntityQuery _getSelectedVertices;
-        private EntityQuery _getUnselectedVertices;
-        private EntityQuery _getSelectedVerticesWritable;
         private EntityQuery _getHalfEdges;
         private EntityQuery _getHalfEdgesWritable;
-
-        private readonly HashSet<Entity> _tempEntitySet = new HashSet<Entity>();
-        private readonly List<Entity> _tempEntityList = new List<Entity>();
 
         public override bool AllowTwoHanded => false;
 
         protected override void OnUpdate()
         {
-            var verticesMoved = false;
-
             var hand = LeftHandActive ? Player.leftHand : Player.rightHand;
 
             if (UpdateHover(hand, ref _state, out var leftHandPos))
             {
-                verticesMoved |= UpdateInteract(hand, leftHandPos, ref _state);
+                UpdateInteract(hand, leftHandPos, ref _state);
             }
+        }
 
-            if (verticesMoved)
-            {
-                UpdateDirtyRooms();
-            }
+        protected override void OnSelected()
+        {
+            var widgetsVisible = EntityManager.GetComponentData<WidgetsVisible>(Level);
+            widgetsVisible.Vertex = true;
+            EntityManager.SetComponentData(Level, widgetsVisible);
         }
 
         protected override void OnDeselected()
         {
+            var widgetsVisible = EntityManager.GetComponentData<WidgetsVisible>(Level);
+            widgetsVisible.Vertex = false;
+            EntityManager.SetComponentData(Level, widgetsVisible);
+
             ResetState(ref _state);
         }
 
         protected override void OnStart()
         {
-            _getVertices = EntityManager.CreateEntityQuery(
-                new EntityQueryDesc
-                {
-                    All = new[] { ComponentType.ReadOnly<Vertex>(), ComponentType.ReadOnly<WithinLevel>() }
-                });
-
             _getSelectedVertices = EntityManager.CreateEntityQuery(
                 new EntityQueryDesc
                 {
                     All = new[] { ComponentType.ReadOnly<Selected>(), ComponentType.ReadOnly<Vertex>(), ComponentType.ReadOnly<WithinLevel>()  }
-                });
-
-            _getUnselectedVertices = EntityManager.CreateEntityQuery(
-                new EntityQueryDesc
-                {
-                    All = new[] { ComponentType.ReadOnly<Vertex>(), ComponentType.ReadOnly<WithinLevel>() },
-                    None = new [] { ComponentType.ReadOnly<Selected>() }
-                });
-
-            _getSelectedVerticesWritable = EntityManager.CreateEntityQuery(
-                new EntityQueryDesc
-                {
-                    All = new[] { ComponentType.ReadOnly<Selected>(), ComponentType.ReadOnly<WithinLevel>(), typeof(Vertex) }
                 });
 
             _getHalfEdges = EntityManager.CreateEntityQuery(
@@ -106,8 +85,6 @@ namespace LevelBuilderVR.Behaviours.Tools
         protected override void OnSelectLevel(Entity level)
         {
             _getSelectedVertices.SetSharedComponentFilter(new WithinLevel(Level));
-            _getUnselectedVertices.SetSharedComponentFilter(new WithinLevel(Level));
-            _getSelectedVerticesWritable.SetSharedComponentFilter(new WithinLevel(Level));
             _getHalfEdges.SetSharedComponentFilter(new WithinLevel(Level));
             _getHalfEdgesWritable.SetSharedComponentFilter(new WithinLevel(Level));
         }
@@ -259,120 +236,7 @@ namespace LevelBuilderVR.Behaviours.Tools
 
         private void DuplicateVertices(ref HandState state)
         {
-            // Find all selected vertices that are connected to non-selected ones
-            // For each such vertex:
-            //   Create a new vertex at the original position of that vertex
-            //   If not connected to any other selected vertices:
-            //     Pick half edge that the new vertex can be inserted into, minimizing total length
-            //   Otherwise:
-            //     Insert half edge(s) between selected and new vertex
-
-            var em = EntityManager;
-            var vertexHalfEdgesDict = _tempVertexHalfEdgesDict;
-            var vertexHalfEdgesPool = _vertexHalfEdgesPool;
-            var vertexHalfEdgesUsed = _vertexHalfEdgesUsed;
-
-            var endVertexList = _tempEntityList;
-
-            endVertexList.Clear();
-
-            foreach (var vhe in vertexHalfEdgesUsed)
-            {
-                vertexHalfEdgesPool.Add(vhe);
-            }
-
-            vertexHalfEdgesUsed.Clear();
-            vertexHalfEdgesDict.Clear();
-
-            var allHalfEdgeEntities = _getHalfEdges.ToEntityArray(Allocator.TempJob);
-            var allHalfEdges = _getHalfEdges.ToComponentDataArray<HalfEdge>(Allocator.TempJob);
-
-            // Find all selected vertices connected to a non-selected vertex
-            // Build up a dict of all connecting half edges for each of these "end" vertices
-
-            for (var i = 0; i < allHalfEdges.Length; ++i)
-            {
-                var halfEdge = allHalfEdges[i];
-
-                var nextVertex = em.GetComponentData<HalfEdge>(halfEdge.Next).Vertex;
-                var thisSelected = em.HasComponent<Selected>(halfEdge.Vertex);
-                var nextSelected = em.HasComponent<Selected>(nextVertex);
-
-                if (thisSelected == nextSelected)
-                {
-                    continue;
-                }
-
-                var endVertex = thisSelected ? halfEdge.Vertex : nextVertex;
-
-                if (!vertexHalfEdgesDict.TryGetValue(endVertex, out var vertexHalfEdges))
-                {
-                    endVertexList.Add(endVertex);
-
-                    vertexHalfEdges = new List<Entity>();
-                    vertexHalfEdgesUsed.Add(vertexHalfEdges);
-                    vertexHalfEdgesDict.Add(endVertex, vertexHalfEdges);
-                }
-
-                vertexHalfEdges.Add(allHalfEdgeEntities[i]);
-            }
-
-            allHalfEdgeEntities.Dispose();
-            allHalfEdges.Dispose();
-
             // TODO
-            var bestHalfEdges = new List<Entity>();
-
-            // For each "end" vertex, find out which edge(s) are the best to insert
-            // the newly created vertex into
-
-            foreach (var entity in endVertexList)
-            {
-                var vertex = em.GetComponentData<Vertex>(entity);
-                var halfEdges = vertexHalfEdgesDict[entity];
-
-                var newPos = new float2(vertex.X - state.DragApplied.x, vertex.Z - state.DragApplied.z);
-                var newVertex = em.CreateVertex(Level, newPos.x, newPos.y);
-
-                em.AddComponent<DirtyMesh>(newVertex);
-
-                bestHalfEdges.Clear();
-                var bestScore = float.PositiveInfinity;
-
-                foreach (var halfEdgeEntity in halfEdges)
-                {
-                    var halfEdge = em.GetComponentData<HalfEdge>(halfEdgeEntity);
-                    var next = em.GetComponentData<HalfEdge>(halfEdge.Next);
-
-                    var vertex0 = em.GetComponentData<Vertex>(halfEdge.Vertex);
-                    var vertex1 = em.GetComponentData<Vertex>(next.Vertex);
-
-                    var pos0 = new float2(vertex0.X, vertex0.Z);
-                    var pos1 = new float2(vertex1.X, vertex1.Z);
-
-                    var score = math.length(newPos - pos0) + math.length(pos1 - newPos) - math.length(pos1 - pos0);
-
-                    if (Math.Abs(score - bestScore) < 1f / 65536f)
-                    {
-                        bestHalfEdges.Add(halfEdgeEntity);
-                    }
-                    else if (score < bestScore)
-                    {
-                        bestScore = score;
-                        bestHalfEdges.Clear();
-                        bestHalfEdges.Add(halfEdgeEntity);
-                    }
-                }
-
-                foreach (var bestHalfEdgeEntity in bestHalfEdges)
-                {
-                    em.InsertHalfEdge(bestHalfEdgeEntity, newVertex);
-                }
-            }
-
-            state.DragOrigin += state.DragApplied;
-            state.DragApplied = float3.zero;
-            HybridLevel.SetDragOffset(-state.DragApplied);
         }
 
         private bool UpdateDragging(Hand hand, float3 handPos, ref HandState state)
@@ -411,23 +275,21 @@ namespace LevelBuilderVR.Behaviours.Tools
             state.DragApplied += offset;
             HybridLevel.SetDragOffset(-state.DragApplied);
 
-            var allSelected = _getSelectedVerticesWritable.ToComponentDataArray<Vertex>(Allocator.TempJob);
+            var selectedEntities = _getSelectedVertices.ToEntityArray(Allocator.TempJob);
+            var moves = new NativeArray<Move>(selectedEntities.Length, Allocator.TempJob);
 
-            for (var i = 0; i < allSelected.Length; ++i)
+            var move = new Move {Offset = offset};
+
+            for (var i = 0; i < moves.Length; ++i)
             {
-                var vertex = allSelected[i];
-
-                vertex.X += offset.x;
-                vertex.Z += offset.z;
-
-                allSelected[i] = vertex;
+                moves[i] = move;
             }
 
-            _getSelectedVerticesWritable.CopyFromComponentDataArray(allSelected);
-
-            allSelected.Dispose();
-
+            EntityManager.AddComponentData(_getSelectedVertices, moves);
             EntityManager.AddComponent<DirtyMesh>(_getSelectedVertices);
+
+            selectedEntities.Dispose();
+            moves.Dispose();
 
             return true;
         }
@@ -439,135 +301,30 @@ namespace LevelBuilderVR.Behaviours.Tools
             return new int2((int) math.round(vertex.X * HashResolution), (int) math.round(vertex.Z * HashResolution));
         }
 
-        private readonly Dictionary<int2, Entity> _uniquePositions = new Dictionary<int2, Entity>();
-        private readonly HashSet<Entity> _referencedVertices = new HashSet<Entity>();
-        private readonly HashSet<Entity> _toDestroySet = new HashSet<Entity>();
-        private readonly List<Entity> _toDestroyList = new List<Entity>();
-
         private bool CleanupGeometry()
         {
-            // Handle merging vertices
+            return false;
 
-            var meshChanged = false;
+            // Remove zero-length edges, then get rid of unreferenced vertices
 
-            do
+            var halfEdges = _getHalfEdgesWritable.ToComponentDataArray<HalfEdge>(Allocator.TempJob);
+
+
+            for (var i = 0; i < halfEdges.Length; ++i)
             {
-                var allSelected = _getSelectedVertices.ToEntityArray(Allocator.TempJob);
-                var allSelectedVertices = _getSelectedVertices.ToComponentDataArray<Vertex>(Allocator.TempJob);
+                var halfEdge = halfEdges[i];
+            }
 
-                _uniquePositions.Clear();
-                _referencedVertices.Clear();
-                _toDestroySet.Clear();
-                _toDestroyList.Clear();
+            halfEdges.Dispose();
 
-                for (var i = 0; i < allSelected.Length; ++i)
-                {
-                    var hash = GetPositionHash(allSelectedVertices[i]);
-                    if (!_uniquePositions.ContainsKey(hash))
-                    {
-                        var vertex = allSelected[i];
+            // Remove unreferenced vertices
 
-                        _uniquePositions.Add(hash, vertex);
-                    }
-                }
+            var unreferenced = new TempEntitySet(SetAccess.Enumerate);
 
-                allSelected.Dispose();
-                allSelectedVertices.Dispose();
+            EntityManager.GetUnreferencedVertices(Level, unreferenced);
+            EntityManager.DestroyEntities(unreferenced);
 
-                var em = EntityManager;
-
-                var allHalfEdges = _getHalfEdgesWritable.ToComponentDataArray<HalfEdge>(Allocator.TempJob);
-
-                var merged = false;
-
-                for (var i = 0; i < allHalfEdges.Length; ++i)
-                {
-                    var halfEdge = allHalfEdges[i];
-                    var hash = GetPositionHash(em.GetComponentData<Vertex>(halfEdge.Vertex));
-
-                    if (_uniquePositions.TryGetValue(hash, out var vertex) && vertex != halfEdge.Vertex)
-                    {
-                        merged = true;
-
-                        em.AddComponent<DirtyMesh>(halfEdge.Room);
-
-                        halfEdge.Vertex = vertex;
-                        allHalfEdges[i] = halfEdge;
-                    }
-                }
-
-                if (merged)
-                {
-                    _getHalfEdgesWritable.CopyFromComponentDataArray(allHalfEdges);
-
-                    allHalfEdges.Dispose();
-                    allHalfEdges = _getHalfEdgesWritable.ToComponentDataArray<HalfEdge>(Allocator.TempJob);
-                }
-
-                var edgeRemoved = false;
-
-                for (var i = 0; i < allHalfEdges.Length; ++i)
-                {
-                    var halfEdge = allHalfEdges[i];
-                    var nextHalfEdge = em.GetComponentData<HalfEdge>(halfEdge.Next);
-                    var next2HalfEdge = em.GetComponentData<HalfEdge>(nextHalfEdge.Next);
-
-                    if (nextHalfEdge.Vertex == next2HalfEdge.Vertex || !em.Exists(nextHalfEdge.Vertex))
-                    {
-                        edgeRemoved = true;
-
-                        em.AddComponent<DirtyMesh>(halfEdge.Room);
-
-                        if (_toDestroySet.Add(halfEdge.Next))
-                        {
-                            _toDestroyList.Add(halfEdge.Next);
-                        }
-
-                        // TODO: maybe make sure we set this to the next _valid_ half edge
-
-                        halfEdge.Next = nextHalfEdge.Next;
-                        allHalfEdges[i] = halfEdge;
-                    }
-                    else
-                    {
-                        _referencedVertices.Add(nextHalfEdge.Vertex);
-                    }
-                }
-
-                if (edgeRemoved)
-                {
-                    _getHalfEdgesWritable.CopyFromComponentDataArray(allHalfEdges);
-                }
-
-                allHalfEdges.Dispose();
-
-                em.DestroyEntities(_toDestroyList);
-
-                _toDestroyList.Clear();
-                _toDestroySet.Clear();
-
-                if (!merged && !edgeRemoved)
-                {
-                    return meshChanged;
-                }
-
-                var allVertices = _getVertices.ToEntityArray(Allocator.TempJob);
-
-                foreach (var vertex in allVertices)
-                {
-                    if (!_referencedVertices.Contains(vertex))
-                    {
-                        _toDestroyList.Add(vertex);
-                    }
-                }
-
-                allVertices.Dispose();
-
-                em.DestroyEntities(_toDestroyList);
-                _toDestroyList.Clear();
-
-                meshChanged = true;
-            } while (true);
+            unreferenced.Dispose();
         }
 
         private bool StopDragging(ref HandState state)
@@ -575,44 +332,6 @@ namespace LevelBuilderVR.Behaviours.Tools
             HybridLevel.SetDragOffset(Vector3.zero);
 
             return CleanupGeometry();
-        }
-
-        private void UpdateDirtyRooms()
-        {
-            var halfEdges = _getHalfEdges.ToComponentDataArray<HalfEdge>(Allocator.TempJob);
-
-            var modifiedRoomSet = _tempEntitySet;
-            var modifiedRoomList = _tempEntityList;
-
-            modifiedRoomSet.Clear();
-            modifiedRoomList.Clear();
-
-            var em = EntityManager;
-
-            foreach (var halfEdge in halfEdges)
-            {
-                if (em.HasComponent<DirtyMesh>(halfEdge.Vertex))
-                {
-                    if (modifiedRoomSet.Add(halfEdge.Room))
-                    {
-                        modifiedRoomList.Add(halfEdge.Room);
-                    }
-                }
-            }
-
-            halfEdges.Dispose();
-
-            var dirtyRooms = new NativeArray<Entity>(modifiedRoomList.Count, Allocator.TempJob);
-
-            for (var i = 0; i < modifiedRoomList.Count; ++i)
-            {
-                dirtyRooms[i] = modifiedRoomList[i];
-            }
-
-            em.RemoveComponent<DirtyMesh>(_getSelectedVertices);
-            em.AddComponent<DirtyMesh>(dirtyRooms);
-
-            dirtyRooms.Dispose();
         }
 
         private void ResetState(ref HandState state)

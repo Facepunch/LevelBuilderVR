@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using LevelBuilderVR.Behaviours;
 using Unity.Collections;
 using Unity.Entities;
@@ -21,7 +20,10 @@ namespace LevelBuilderVR.Entities
 
         private static HybridLevel _sHybridLevel;
         private static EntityQuery _sSelectedQuery;
-        private static EntityQuery _sClosestCornerQuery;
+        private static EntityQuery _sClosestVertexQuery;
+
+        private static EntityQuery _sHalfEdgesQuery;
+        private static EntityQuery _sVerticesQuery;
 
         private static HybridLevel HybridLevel => _sHybridLevel ?? (_sHybridLevel = Object.FindObjectOfType<HybridLevel>());
 
@@ -34,6 +36,7 @@ namespace LevelBuilderVR.Entities
                 typeof(Identifier),
                 typeof(Level),
                 typeof(WithinLevel),
+                typeof(WidgetsVisible),
                 typeof(LocalToWorld),
                 typeof(WorldToLocal));
 
@@ -53,10 +56,7 @@ namespace LevelBuilderVR.Entities
             _sVertexArchetype = em.CreateArchetype(
                 typeof(Identifier),
                 typeof(Vertex),
-                typeof(WithinLevel),
-                typeof(RenderMesh),
-                typeof(LocalToWorld),
-                typeof(RenderBounds));
+                typeof(WithinLevel));
 
             _sSelectedQuery = em.CreateEntityQuery(
                 new EntityQueryDesc
@@ -64,9 +64,21 @@ namespace LevelBuilderVR.Entities
                     All = new[] {ComponentType.ReadOnly<Selected>()}
                 });
 
-            _sClosestCornerQuery = em.CreateEntityQuery(
+            _sClosestVertexQuery = em.CreateEntityQuery(
                 new EntityQueryDesc {
                     All = new [] { ComponentType.ReadOnly<Vertex>(), ComponentType.ReadOnly<WithinLevel>() }
+                });
+
+            _sHalfEdgesQuery = em.CreateEntityQuery(
+                new EntityQueryDesc
+                {
+                    All = new[] { ComponentType.ReadOnly<HalfEdge>(), ComponentType.ReadOnly<WithinLevel>() }
+                });
+
+            _sVerticesQuery = em.CreateEntityQuery(
+                new EntityQueryDesc
+                {
+                    All = new[] {ComponentType.ReadOnly<Vertex>(), ComponentType.ReadOnly<WithinLevel>() }
                 });
         }
 
@@ -215,28 +227,6 @@ namespace LevelBuilderVR.Entities
                 Z = z
             });
 
-            em.SetSharedComponentData(vertex, new RenderMesh
-            {
-                mesh = HybridLevel.VertexWidgetMesh,
-                material = HybridLevel.VertexWidgetBaseMaterial,
-                castShadows = ShadowCastingMode.Off,
-                receiveShadows = false
-            });
-
-            em.SetComponentData(vertex, new LocalToWorld
-            {
-                Value = float4x4.TRS(new float3(x, 0f, z), Quaternion.identity, new float3(1f, 1f, 1f))
-            });
-
-            em.SetComponentData(vertex, new RenderBounds
-            {
-                Value = new AABB
-                {
-                    Center = new float3(0f, 0f, 0f),
-                    Extents = new float3(1f, 1f, 1f)
-                }
-            });
-
             return vertex;
         }
 
@@ -293,7 +283,7 @@ namespace LevelBuilderVR.Entities
 
             var closestDist2 = float.PositiveInfinity;
 
-            using (var entities = _sClosestCornerQuery.ToEntityArray(Allocator.TempJob))
+            using (var entities = _sClosestVertexQuery.ToEntityArray(Allocator.TempJob))
             {
                 foreach (var entity in entities)
                 {
@@ -320,7 +310,7 @@ namespace LevelBuilderVR.Entities
             return outEntity != Entity.Null;
         }
 
-        public static bool DestroyEntities(this EntityManager em, List<Entity> entities)
+        public static bool DestroyEntities(this EntityManager em, TempEntitySet entities)
         {
             if (entities.Count == 0)
             {
@@ -339,6 +329,37 @@ namespace LevelBuilderVR.Entities
             toDestroy.Dispose();
 
             return true;
+        }
+
+        /// <summary>
+        /// Find all <see cref="Entity"/> instances with a <see cref="Vertex"/>, that
+        /// aren't referenced by any <see cref="HalfEdge"/>s.
+        /// </summary>
+        public static int GetUnreferencedVertices(this EntityManager em, Entity level, TempEntitySet outEntities)
+        {
+            outEntities.Clear();
+
+            // Get all vertices
+
+            _sVerticesQuery.SetSharedComponentFilter(new WithinLevel(level));
+
+            outEntities.AddRange(_sVerticesQuery);
+
+            // Remove vertices from vertexSet that are referenced
+
+            _sHalfEdgesQuery.SetSharedComponentFilter(new WithinLevel(level));
+
+            var halfEdges = _sHalfEdgesQuery.ToComponentDataArray<HalfEdge>(Allocator.TempJob);
+
+            for (var i = 0; i < halfEdges.Length; ++i)
+            {
+                var halfEdge = halfEdges[i];
+                outEntities.Remove(halfEdge.Vertex);
+            }
+
+            halfEdges.Dispose();
+
+            return outEntities.Count;
         }
     }
 }

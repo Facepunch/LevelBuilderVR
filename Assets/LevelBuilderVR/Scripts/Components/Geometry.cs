@@ -144,6 +144,11 @@ namespace LevelBuilderVR
 
     }
 
+    public struct WidgetsVisible : IComponentData
+    {
+        public bool Vertex;
+    }
+
     public struct Selected : IComponentData
     {
 
@@ -152,5 +157,10 @@ namespace LevelBuilderVR
     public struct Hovered : IComponentData
     {
 
+    }
+
+    public struct Move : IComponentData
+    {
+        public float3 Offset;
     }
 }
