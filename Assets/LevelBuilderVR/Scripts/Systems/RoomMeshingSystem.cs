@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace LevelBuilderVR.Systems
 {
-    [UpdateAfter(typeof(DirtyVertexSystem)), UpdateAfter(typeof(WidgetVisibleSystem))]
+    [UpdateAfter(typeof(DirtyVertexSystem)), UpdateAfter(typeof(WidgetVisibleSystem)), UpdateBefore(typeof(WidgetTransformSystem))]
     public class RoomMeshingSystem : ComponentSystem
     {
         private const int MaxVertices = 1024;
@@ -323,29 +323,6 @@ namespace LevelBuilderVR.Systems
                     {
                         Center = renderMesh.mesh.bounds.center,
                         Extents = renderMesh.mesh.bounds.extents
-                    };
-                });
-
-            Entities
-                .WithAllReadOnly<Vertex, WithinLevel>()
-                .WithAll<LocalToWorld, RenderBounds>()
-                .ForEach((Entity entity, ref Vertex vertex, ref LocalToWorld localToWorld, ref RenderBounds renderBounds) =>
-                {
-                    var withinLevel = EntityManager.GetSharedComponentData<WithinLevel>(entity);
-
-                    var translation = new float3(vertex.X, (vertex.MinY + vertex.MaxY) * 0.5f, vertex.Z);
-                    var scale = new float3(1f, (vertex.MaxY - vertex.MinY) * 0.5f, 1f);
-
-                    var levelTransform = getLocalToWorld[withinLevel.Level].Value;
-                    var localTransform = float4x4.TRS(translation, quaternion.identity, scale);
-                    var finalTransform = math.mul(levelTransform, localTransform);
-
-                    localToWorld.Value = finalTransform;
-
-                    renderBounds.Value = new AABB
-                    {
-                        Center = float3.zero,
-                        Extents = scale
                     };
                 });
         }
