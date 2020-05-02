@@ -9,13 +9,14 @@ namespace LevelBuilderVR.Systems
     [UpdateAfter(typeof(WidgetVisibleSystem))]
     public class WidgetTransformSystem : ComponentSystem
     {
-        private EntityQuery _getVertices;
+        private EntityQuery _getVerticesVisible;
 
         protected override void OnCreate()
         {
-            _getVertices = Entities
+            _getVerticesVisible = Entities
                 .WithAllReadOnly<Vertex, WithinLevel>()
                 .WithAll<LocalToWorld, RenderBounds>()
+                .WithNone<Hidden>()
                 .ToEntityQuery();
         }
 
@@ -25,11 +26,11 @@ namespace LevelBuilderVR.Systems
                 .WithAllReadOnly<Level, WidgetsVisible, LocalToWorld>()
                 .ForEach((Entity levelEntity, ref WidgetsVisible widgetsVisible, ref LocalToWorld levelLocalToWorld) =>
                 {
-                    _getVertices.SetSharedComponentFilter(new WithinLevel(levelEntity));
+                    _getVerticesVisible.SetSharedComponentFilter(new WithinLevel(levelEntity));
 
-                    var vertices = _getVertices.ToComponentDataArray<Vertex>(Allocator.TempJob);
-                    var localToWorlds = _getVertices.ToComponentDataArray<LocalToWorld>(Allocator.TempJob);
-                    var renderBoundsArr = _getVertices.ToComponentDataArray<RenderBounds>(Allocator.TempJob);
+                    var vertices = _getVerticesVisible.ToComponentDataArray<Vertex>(Allocator.TempJob);
+                    var localToWorlds = _getVerticesVisible.ToComponentDataArray<LocalToWorld>(Allocator.TempJob);
+                    var renderBoundsArr = _getVerticesVisible.ToComponentDataArray<RenderBounds>(Allocator.TempJob);
 
                     for (var i = 0; i < vertices.Length; ++i)
                     {
@@ -54,8 +55,8 @@ namespace LevelBuilderVR.Systems
                         renderBoundsArr[i] = renderBounds;
                     }
 
-                    _getVertices.CopyFromComponentDataArray(localToWorlds);
-                    _getVertices.CopyFromComponentDataArray(renderBoundsArr);
+                    _getVerticesVisible.CopyFromComponentDataArray(localToWorlds);
+                    _getVerticesVisible.CopyFromComponentDataArray(renderBoundsArr);
 
                     vertices.Dispose();
                     renderBoundsArr.Dispose();

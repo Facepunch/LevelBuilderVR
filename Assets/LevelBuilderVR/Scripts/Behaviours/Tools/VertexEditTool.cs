@@ -4,6 +4,7 @@ using LevelBuilderVR.Entities;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Rendering;
 using Unity.Transforms;
 using UnityEngine;
 using Valve.VR.InteractionSystem;
@@ -14,7 +15,8 @@ namespace LevelBuilderVR.Behaviours.Tools
     {
         private struct HandState
         {
-            public Entity Hovered;
+            public Entity HoveredVertex;
+            public Entity HoveredHalfEdge;
             public bool IsActionHeld;
             public bool IsDragging;
             public bool IsDeselecting;
@@ -33,6 +35,8 @@ namespace LevelBuilderVR.Behaviours.Tools
         private EntityQuery _getHalfEdges;
         private EntityQuery _getHalfEdgesWritable;
 
+        private Entity _halfEdgeWidgetVertex;
+
         public override bool AllowTwoHanded => false;
 
         protected override void OnUpdate()
@@ -50,6 +54,14 @@ namespace LevelBuilderVR.Behaviours.Tools
             var widgetsVisible = EntityManager.GetComponentData<WidgetsVisible>(Level);
             widgetsVisible.Vertex = true;
             EntityManager.SetComponentData(Level, widgetsVisible);
+
+            if (_halfEdgeWidgetVertex == Entity.Null)
+            {
+                _halfEdgeWidgetVertex = EntityManager.CreateVertex(Level, 0f, 0f);
+                EntityManager.AddComponent<Virtual>(_halfEdgeWidgetVertex);
+                EntityManager.SetHovered(_halfEdgeWidgetVertex, true);
+                EntityManager.SetVisible(_halfEdgeWidgetVertex, false);
+            }
         }
 
         protected override void OnDeselected()
@@ -59,6 +71,12 @@ namespace LevelBuilderVR.Behaviours.Tools
             EntityManager.SetComponentData(Level, widgetsVisible);
 
             ResetState(ref _state);
+
+            if (_halfEdgeWidgetVertex != Entity.Null)
+            {
+                EntityManager.DestroyEntity(_halfEdgeWidgetVertex);
+                _halfEdgeWidgetVertex = Entity.Null;
+            }
         }
 
         protected override void OnStart()
@@ -93,10 +111,10 @@ namespace LevelBuilderVR.Behaviours.Tools
         {
             if (!hand.TryGetPointerPosition(out var handPos))
             {
-                if (state.Hovered != Entity.Null)
+                if (state.HoveredVertex != Entity.Null)
                 {
-                    EntityManager.SetHovered(state.Hovered, false);
-                    state.Hovered = Entity.Null;
+                    EntityManager.SetHovered(state.HoveredVertex, false);
+                    state.HoveredVertex = Entity.Null;
                 }
 
                 localHandPos = float3.zero;
@@ -107,40 +125,65 @@ namespace LevelBuilderVR.Behaviours.Tools
             var worldToLocal = EntityManager.GetComponentData<WorldToLocal>(Level).Value;
             localHandPos = math.transform(worldToLocal, handPos);
 
-            if (EntityManager.FindClosestVertex(Level, localHandPos, out var newHovered, out var hoverPos))
+            if (EntityManager.FindClosestVertex(Level, localHandPos, out var newHoveredVertex, out var hoverPos))
             {
                 var hoverWorldPos = math.transform(localToWorld, hoverPos);
                 var dist2 = math.distancesq(hoverWorldPos, handPos);
 
                 if (dist2 > InteractRadius * InteractRadius)
                 {
-                    newHovered = Entity.Null;
+                    newHoveredVertex = Entity.Null;
                 }
             }
 
-            if (state.Hovered == newHovered)
+            var newHoveredHalfEdge = Entity.Null;
+            if (newHoveredVertex == Entity.Null && EntityManager.FindClosestHalfEdge(Level, localHandPos, out newHoveredHalfEdge, out hoverPos, out var virtualVertex))
+            {
+                var hoverWorldPos = math.transform(localToWorld, hoverPos);
+                var dist2 = math.distancesq(hoverWorldPos, handPos);
+
+                if (dist2 > InteractRadius * InteractRadius)
+                {
+                    newHoveredHalfEdge = Entity.Null;
+                }
+                else
+                {
+                    EntityManager.SetComponentData(_halfEdgeWidgetVertex, virtualVertex);
+                }
+            }
+
+            if (state.HoveredVertex == newHoveredVertex && state.HoveredHalfEdge == newHoveredHalfEdge)
             {
                 return true;
             }
 
             hand.TriggerHapticPulse(HapticPulseDurationMicros);
 
-            if (state.Hovered != Entity.Null)
+            if (state.HoveredVertex != newHoveredVertex)
             {
-                EntityManager.SetHovered(state.Hovered, false);
+                if (state.HoveredVertex != Entity.Null)
+                {
+                    EntityManager.SetHovered(state.HoveredVertex, false);
+                }
+
+                if (newHoveredVertex != Entity.Null)
+                {
+                    EntityManager.SetHovered(newHoveredVertex, true);
+                }
+
+                state.HoveredVertex = newHoveredVertex;
             }
 
-            if (newHovered != Entity.Null)
+            if (state.HoveredHalfEdge != newHoveredHalfEdge)
             {
-                EntityManager.SetHovered(newHovered, true);
+                EntityManager.SetVisible(_halfEdgeWidgetVertex, newHoveredHalfEdge != Entity.Null);
+                state.HoveredHalfEdge = newHoveredHalfEdge;
             }
-
-            state.Hovered = newHovered;
 
             return true;
         }
 
-        private bool UpdateInteract(Hand hand, float3 handPos, ref HandState state)
+        private void UpdateInteract(Hand hand, float3 handPos, ref HandState state)
         {
             if (UseToolAction.GetStateDown(hand.handType))
             {
@@ -159,15 +202,8 @@ namespace LevelBuilderVR.Behaviours.Tools
             {
                 if (state.IsDragging)
                 {
-                    var roomsDirty = false;
-
-                    if (MultiSelectAction.GetStateDown(hand.handType))
-                    {
-                        DuplicateVertices(ref state);
-                        roomsDirty = true;
-                    }
-
-                    return UpdateDragging(hand, handPos, ref state) || roomsDirty;
+                    UpdateDragging(hand, handPos, ref state);
+                    return;
                 }
 
                 UpdateSelecting(ref state);
@@ -179,19 +215,17 @@ namespace LevelBuilderVR.Behaviours.Tools
 
                 if (state.IsDragging)
                 {
-                    return StopDragging(ref state);
+                    StopDragging(ref state);
                 }
             }
-
-            return false;
         }
 
         private void StartSelecting(ref HandState state)
         {
-            if (state.Hovered != Entity.Null)
+            if (state.HoveredVertex != Entity.Null)
             {
-                state.IsDeselecting = EntityManager.GetSelected(state.Hovered);
-                EntityManager.SetSelected(state.Hovered, !state.IsDeselecting);
+                state.IsDeselecting = EntityManager.GetSelected(state.HoveredVertex);
+                EntityManager.SetSelected(state.HoveredVertex, !state.IsDeselecting);
             }
             else
             {
@@ -203,21 +237,21 @@ namespace LevelBuilderVR.Behaviours.Tools
 
         private void UpdateSelecting(ref HandState state)
         {
-            if (state.Hovered != Entity.Null)
+            if (state.HoveredVertex != Entity.Null)
             {
-                EntityManager.SetSelected(state.Hovered, !state.IsDeselecting);
+                EntityManager.SetSelected(state.HoveredVertex, !state.IsDeselecting);
             }
         }
 
         private void StartDragging(float3 handPos, ref HandState state)
         {
-            if (state.Hovered == Entity.Null || !EntityManager.GetSelected(state.Hovered))
+            if (state.HoveredVertex == Entity.Null || !EntityManager.GetSelected(state.HoveredVertex))
             {
                 EntityManager.DeselectAll();
 
-                if (state.Hovered != Entity.Null)
+                if (state.HoveredVertex != Entity.Null)
                 {
-                    EntityManager.SetSelected(state.Hovered, true);
+                    EntityManager.SetSelected(state.HoveredVertex, true);
                 }
             }
 
@@ -226,17 +260,6 @@ namespace LevelBuilderVR.Behaviours.Tools
             state.DragApplied = float3.zero;
 
             HybridLevel.SetDragOffset(-state.DragApplied);
-        }
-
-        private readonly List<List<Entity>> _vertexHalfEdgesPool = new List<List<Entity>>();
-        private readonly List<List<Entity>> _vertexHalfEdgesUsed = new List<List<Entity>>();
-
-        private readonly Dictionary<Entity, List<Entity>> _tempVertexHalfEdgesDict =
-            new Dictionary<Entity, List<Entity>>();
-
-        private void DuplicateVertices(ref HandState state)
-        {
-            // TODO
         }
 
         private bool UpdateDragging(Hand hand, float3 handPos, ref HandState state)
@@ -294,52 +317,19 @@ namespace LevelBuilderVR.Behaviours.Tools
             return true;
         }
 
-        private const int HashResolution = 256;
-
-        private static int2 GetPositionHash(Vertex vertex)
-        {
-            return new int2((int) math.round(vertex.X * HashResolution), (int) math.round(vertex.Z * HashResolution));
-        }
-
-        private bool CleanupGeometry()
-        {
-            return false;
-
-            // Remove zero-length edges, then get rid of unreferenced vertices
-
-            var halfEdges = _getHalfEdgesWritable.ToComponentDataArray<HalfEdge>(Allocator.TempJob);
-
-
-            for (var i = 0; i < halfEdges.Length; ++i)
-            {
-                var halfEdge = halfEdges[i];
-            }
-
-            halfEdges.Dispose();
-
-            // Remove unreferenced vertices
-
-            var unreferenced = new TempEntitySet(SetAccess.Enumerate);
-
-            EntityManager.GetUnreferencedVertices(Level, unreferenced);
-            EntityManager.DestroyEntities(unreferenced);
-
-            unreferenced.Dispose();
-        }
-
         private bool StopDragging(ref HandState state)
         {
             HybridLevel.SetDragOffset(Vector3.zero);
 
-            return CleanupGeometry();
+            return false;
         }
 
         private void ResetState(ref HandState state)
         {
-            if (state.Hovered != Entity.Null)
+            if (state.HoveredVertex != Entity.Null)
             {
-                EntityManager.SetHovered(state.Hovered, false);
-                state.Hovered = Entity.Null;
+                EntityManager.SetHovered(state.HoveredVertex, false);
+                state.HoveredVertex = Entity.Null;
             }
 
             state.IsDragging = false;

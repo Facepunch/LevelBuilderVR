@@ -20,7 +20,6 @@ namespace LevelBuilderVR.Entities
 
         private static HybridLevel _sHybridLevel;
         private static EntityQuery _sSelectedQuery;
-        private static EntityQuery _sClosestVertexQuery;
 
         private static EntityQuery _sHalfEdgesQuery;
         private static EntityQuery _sVerticesQuery;
@@ -64,11 +63,6 @@ namespace LevelBuilderVR.Entities
                     All = new[] {ComponentType.ReadOnly<Selected>()}
                 });
 
-            _sClosestVertexQuery = em.CreateEntityQuery(
-                new EntityQueryDesc {
-                    All = new [] { ComponentType.ReadOnly<Vertex>(), ComponentType.ReadOnly<WithinLevel>() }
-                });
-
             _sHalfEdgesQuery = em.CreateEntityQuery(
                 new EntityQueryDesc
                 {
@@ -78,7 +72,8 @@ namespace LevelBuilderVR.Entities
             _sVerticesQuery = em.CreateEntityQuery(
                 new EntityQueryDesc
                 {
-                    All = new[] {ComponentType.ReadOnly<Vertex>(), ComponentType.ReadOnly<WithinLevel>() }
+                    All = new[] {ComponentType.ReadOnly<Vertex>(), ComponentType.ReadOnly<WithinLevel>() },
+                    None = new [] {ComponentType.ReadOnly<Virtual>() }
                 });
         }
 
@@ -275,6 +270,18 @@ namespace LevelBuilderVR.Entities
             em.RemoveComponent<Selected>(_sSelectedQuery);
         }
 
+        public static void SetVisible(this EntityManager em, Entity entity, bool value)
+        {
+            if (value)
+            {
+                em.RemoveComponent<Hidden>(entity);
+            }
+            else
+            {
+                em.AddComponent<Hidden>(entity);
+            }
+        }
+
         public static bool FindClosestVertex(this EntityManager em, Entity level, float3 localPos,
             out Entity outEntity, out float3 outClosestPoint)
         {
@@ -283,15 +290,11 @@ namespace LevelBuilderVR.Entities
 
             var closestDist2 = float.PositiveInfinity;
 
-            using (var entities = _sClosestVertexQuery.ToEntityArray(Allocator.TempJob))
+            _sVerticesQuery.SetSharedComponentFilter(new WithinLevel(level));
+            using (var entities = _sVerticesQuery.ToEntityArray(Allocator.TempJob))
             {
                 foreach (var entity in entities)
                 {
-                    if (level != em.GetSharedComponentData<WithinLevel>(entity).Level)
-                    {
-                        continue;
-                    }
-
                     var vertex = em.GetComponentData<Vertex>(entity);
                     var pos = new float3(vertex.X, math.clamp(localPos.y, vertex.MinY, vertex.MaxY), vertex.Z);
                     var dist2 = math.lengthsq(pos - localPos);
@@ -304,6 +307,79 @@ namespace LevelBuilderVR.Entities
                     closestDist2 = dist2;
                     outClosestPoint = pos;
                     outEntity = entity;
+                }
+            }
+
+            return outEntity != Entity.Null;
+        }
+
+        public static bool FindClosestHalfEdge(this EntityManager em, Entity level, float3 localPos,
+            out Entity outEntity, out float3 outClosestPoint, out Vertex outVirtualVertex)
+        {
+            const float epsilon = 1f / 65536f;
+
+            outEntity = Entity.Null;
+            outClosestPoint = localPos;
+            outVirtualVertex = default;
+
+            var closestDist2 = float.PositiveInfinity;
+            var closestV = 0f;
+
+            _sHalfEdgesQuery.SetSharedComponentFilter(new WithinLevel(level));
+            using (var entities = _sHalfEdgesQuery.ToEntityArray(Allocator.TempJob))
+            {
+                foreach (var entity in entities)
+                {
+                    var halfEdge = em.GetComponentData<HalfEdge>(entity);
+                    var nextHalfEdge = em.GetComponentData<HalfEdge>(halfEdge.Next);
+                    var vertex0 = em.GetComponentData<Vertex>(halfEdge.Vertex);
+                    var vertex1 = em.GetComponentData<Vertex>(nextHalfEdge.Vertex);
+
+                    var p0 = new float3(vertex0.X, 0f, vertex0.Z);
+                    var p1 = new float3(vertex1.X, 0f, vertex1.Z);
+                    var length = math.length(p1 - p0);
+
+                    if (length < epsilon)
+                    {
+                        continue;
+                    }
+
+                    var tangent = math.normalize(p1 - p0);
+                    var normal = new float3(-tangent.y, 0f, tangent.x);
+
+                    var diff = localPos - p0;
+
+                    var u = math.dot(diff, tangent);
+                    var v = math.dot(diff, normal);
+
+                    var clampedU = math.clamp(u, 0f, length);
+                    
+                    var t = clampedU / length;
+                    var minY = math.lerp(vertex0.MinY, vertex1.MinY, t);
+                    var maxY = math.lerp(vertex0.MaxY, vertex1.MaxY, t);
+
+                    var onEdgePos = p0 + math.clamp(u, 0f, length) * tangent;
+
+                    onEdgePos.y = math.clamp(localPos.y, minY, maxY);
+
+                    var dist2 = math.lengthsq(localPos - onEdgePos);
+
+                    if (dist2 < closestDist2 || math.abs(dist2 - closestDist2) <= epsilon * epsilon && closestV < 0f && v > 0f)
+                    {
+                        closestDist2 = dist2;
+                        closestV = v;
+
+                        outClosestPoint = onEdgePos;
+                        outEntity = entity;
+
+                        outVirtualVertex = new Vertex
+                        {
+                            X = outClosestPoint.x,
+                            Z = outClosestPoint.z,
+                            MinY = minY,
+                            MaxY = maxY
+                        };
+                    }
                 }
             }
 

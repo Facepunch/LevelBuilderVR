@@ -159,6 +159,16 @@ namespace LevelBuilderVR
 
     }
 
+    public struct Virtual : IComponentData
+    {
+
+    }
+
+    public struct Hidden : IComponentData
+    {
+
+    }
+
     public struct Move : IComponentData
     {
         public float3 Offset;

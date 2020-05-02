@@ -13,18 +13,24 @@ namespace LevelBuilderVR.Systems
     {
         private HybridLevel _hybridLevel;
 
-        private EntityQuery _getNonVisibleVertices;
-        private EntityQuery _getVisibleVertices;
+        private EntityQuery _getNonRenderableVertices;
+        private EntityQuery _getRenderableVertices;
+        private EntityQuery _getHiddenVertices;
 
         protected override void OnCreate()
         {
-            _getNonVisibleVertices = Entities
+            _getNonRenderableVertices = Entities
                 .WithAllReadOnly<Vertex, WithinLevel>()
-                .WithNone<RenderMesh, LocalToWorld, RenderBounds>()
+                .WithNone<RenderMesh, LocalToWorld, RenderBounds, Hidden>()
                 .ToEntityQuery();
 
-            _getVisibleVertices = Entities
+            _getRenderableVertices = Entities
                 .WithAllReadOnly<Vertex, WithinLevel, RenderMesh, LocalToWorld, RenderBounds>()
+                .ToEntityQuery();
+
+            _getHiddenVertices = Entities
+                .WithAllReadOnly<Vertex, WithinLevel, RenderMesh, LocalToWorld, RenderBounds>()
+                .WithAllReadOnly<Hidden>()
                 .ToEntityQuery();
         }
 
@@ -36,10 +42,16 @@ namespace LevelBuilderVR.Systems
                 .WithAllReadOnly<Level, WidgetsVisible>()
                 .ForEach((Entity levelEntity, ref WidgetsVisible widgetsVisible) =>
                 {
+                    var toHideQuery = _getRenderableVertices;
+
+                    NativeArray<Entity> entities;
+
                     if (widgetsVisible.Vertex)
                     {
-                        _getNonVisibleVertices.SetSharedComponentFilter(new WithinLevel(levelEntity));
-                        var entities = _getNonVisibleVertices.ToEntityArray(Allocator.TempJob);
+                        toHideQuery = _getHiddenVertices;
+
+                        _getNonRenderableVertices.SetSharedComponentFilter(new WithinLevel(levelEntity));
+                        entities = _getNonRenderableVertices.ToEntityArray(Allocator.TempJob);
 
                         var renderMesh = new RenderMesh
                         {
@@ -61,22 +73,20 @@ namespace LevelBuilderVR.Systems
 
                         entities.Dispose();
                     }
-                    else
+
+                    toHideQuery.SetSharedComponentFilter(new WithinLevel(levelEntity));
+                    entities = toHideQuery.ToEntityArray(Allocator.TempJob);
+
+                    for (var i = 0; i < entities.Length; ++i)
                     {
-                        _getVisibleVertices.SetSharedComponentFilter(new WithinLevel(levelEntity));
-                        var entities = _getVisibleVertices.ToEntityArray(Allocator.TempJob);
+                        var entity = entities[i];
 
-                        for (var i = 0; i < entities.Length; ++i)
-                        {
-                            var entity = entities[i];
-
-                            PostUpdateCommands.RemoveComponent<RenderMesh>(entity);
-                            PostUpdateCommands.RemoveComponent<LocalToWorld>(entity);
-                            PostUpdateCommands.RemoveComponent<RenderBounds>(entity);
-                        }
-
-                        entities.Dispose();
+                        PostUpdateCommands.RemoveComponent<RenderMesh>(entity);
+                        PostUpdateCommands.RemoveComponent<LocalToWorld>(entity);
+                        PostUpdateCommands.RemoveComponent<RenderBounds>(entity);
                     }
+
+                    entities.Dispose();
                 });
         }
     }
