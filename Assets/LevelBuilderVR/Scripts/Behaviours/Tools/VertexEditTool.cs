@@ -183,12 +183,31 @@ namespace LevelBuilderVR.Behaviours.Tools
             return true;
         }
 
+        private void CreateNewVertexAtHover(ref HandState state)
+        {
+            var virtualVertex = EntityManager.GetComponentData<Vertex>(_halfEdgeWidgetVertex);
+
+            var newVertex = EntityManager.CreateVertex(Level,
+                math.round(virtualVertex.X / GridSnap) * GridSnap,
+                math.round(virtualVertex.Z / GridSnap) * GridSnap);
+
+            EntityManager.InsertHalfEdge(state.HoveredHalfEdge, newVertex);
+
+            state.HoveredVertex = newVertex;
+            state.HoveredHalfEdge = Entity.Null;
+        }
+
         private void UpdateInteract(Hand hand, float3 handPos, ref HandState state)
         {
             if (UseToolAction.GetStateDown(hand.handType))
             {
                 state.IsActionHeld = true;
-                
+
+                if (state.HoveredHalfEdge != Entity.Null)
+                {
+                    CreateNewVertexAtHover(ref state);
+                }
+
                 if (MultiSelectAction.GetState(hand.handType))
                 {
                     StartSelecting(ref state);
@@ -222,8 +241,6 @@ namespace LevelBuilderVR.Behaviours.Tools
 
         private void StartSelecting(ref HandState state)
         {
-            // TODO: Create and select virtual vertex if HalfEdge is hovered?
-
             if (state.HoveredVertex != Entity.Null)
             {
                 state.IsDeselecting = EntityManager.GetSelected(state.HoveredVertex);
@@ -247,20 +264,6 @@ namespace LevelBuilderVR.Behaviours.Tools
 
         private void StartDragging(float3 handPos, ref HandState state)
         {
-            if (state.HoveredHalfEdge != Entity.Null)
-            {
-                var virtualVertex = EntityManager.GetComponentData<Vertex>(_halfEdgeWidgetVertex);
-
-                var newVertex = EntityManager.CreateVertex(Level,
-                    math.round(virtualVertex.X / GridSnap) * GridSnap,
-                    math.round(virtualVertex.Z / GridSnap) * GridSnap);
-
-                EntityManager.InsertHalfEdge(state.HoveredHalfEdge, newVertex);
-
-                state.HoveredVertex = newVertex;
-                state.HoveredHalfEdge = Entity.Null;
-            }
-
             if (state.HoveredVertex == Entity.Null || !EntityManager.GetSelected(state.HoveredVertex))
             {
                 EntityManager.DeselectAll();
