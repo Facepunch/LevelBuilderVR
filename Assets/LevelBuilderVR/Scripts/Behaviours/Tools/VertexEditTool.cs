@@ -250,7 +250,11 @@ namespace LevelBuilderVR.Behaviours.Tools
             if (state.HoveredHalfEdge != Entity.Null)
             {
                 var virtualVertex = EntityManager.GetComponentData<Vertex>(_halfEdgeWidgetVertex);
-                var newVertex = EntityManager.CreateVertex(Level, virtualVertex.X, virtualVertex.Z);
+
+                var newVertex = EntityManager.CreateVertex(Level,
+                    math.round(virtualVertex.X / GridSnap) * GridSnap,
+                    math.round(virtualVertex.Z / GridSnap) * GridSnap);
+
                 EntityManager.InsertHalfEdge(state.HoveredHalfEdge, newVertex);
 
                 state.HoveredVertex = newVertex;
