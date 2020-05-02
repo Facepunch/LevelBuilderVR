@@ -222,6 +222,8 @@ namespace LevelBuilderVR.Behaviours.Tools
 
         private void StartSelecting(ref HandState state)
         {
+            // TODO: Create and select virtual vertex if HalfEdge is hovered?
+
             if (state.HoveredVertex != Entity.Null)
             {
                 state.IsDeselecting = EntityManager.GetSelected(state.HoveredVertex);
@@ -245,6 +247,16 @@ namespace LevelBuilderVR.Behaviours.Tools
 
         private void StartDragging(float3 handPos, ref HandState state)
         {
+            if (state.HoveredHalfEdge != Entity.Null)
+            {
+                var virtualVertex = EntityManager.GetComponentData<Vertex>(_halfEdgeWidgetVertex);
+                var newVertex = EntityManager.CreateVertex(Level, virtualVertex.X, virtualVertex.Z);
+                EntityManager.InsertHalfEdge(state.HoveredHalfEdge, newVertex);
+
+                state.HoveredVertex = newVertex;
+                state.HoveredHalfEdge = Entity.Null;
+            }
+
             if (state.HoveredVertex == Entity.Null || !EntityManager.GetSelected(state.HoveredVertex))
             {
                 EntityManager.DeselectAll();
