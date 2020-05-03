@@ -1,10 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using LevelBuilderVR.Entities;
+﻿using LevelBuilderVR.Entities;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
-using Unity.Rendering;
 using Unity.Transforms;
 using UnityEngine;
 using Valve.VR.InteractionSystem;
@@ -25,9 +22,6 @@ namespace LevelBuilderVR.Behaviours.Tools
         }
 
         private HandState _state;
-
-        public float InteractRadius = 0.05f;
-        public float GridSnap = 0.25f;
 
         public ushort HapticPulseDurationMicros = 500;
 
