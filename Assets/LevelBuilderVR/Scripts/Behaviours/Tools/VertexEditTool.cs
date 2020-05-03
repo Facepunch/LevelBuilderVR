@@ -31,7 +31,12 @@ namespace LevelBuilderVR.Behaviours.Tools
 
         private Entity _halfEdgeWidgetVertex;
 
+        private Vector3 _gridOrigin;
+
         public override bool AllowTwoHanded => false;
+
+        public override bool ShowGrid => _state.IsActionHeld && _state.IsDragging;
+        public override Vector3 GridOrigin => _gridOrigin;
 
         protected override void OnUpdate()
         {
@@ -119,6 +124,11 @@ namespace LevelBuilderVR.Behaviours.Tools
             var worldToLocal = EntityManager.GetComponentData<WorldToLocal>(Level).Value;
             localHandPos = math.transform(worldToLocal, handPos);
 
+            if (state.IsActionHeld && state.IsDragging)
+            {
+                return true;
+            }
+
             if (EntityManager.FindClosestVertex(Level, localHandPos, out var newHoveredVertex, out var hoverPos))
             {
                 var hoverWorldPos = math.transform(localToWorld, hoverPos);
@@ -131,7 +141,7 @@ namespace LevelBuilderVR.Behaviours.Tools
             }
 
             var newHoveredHalfEdge = Entity.Null;
-            if (newHoveredVertex == Entity.Null && EntityManager.FindClosestHalfEdge(Level, localHandPos, out newHoveredHalfEdge, out hoverPos, out var virtualVertex))
+            if (!state.IsActionHeld && newHoveredVertex == Entity.Null && EntityManager.FindClosestHalfEdge(Level, localHandPos, out newHoveredHalfEdge, out hoverPos, out var virtualVertex))
             {
                 var hoverWorldPos = math.transform(localToWorld, hoverPos);
                 var dist2 = math.distancesq(hoverWorldPos, handPos);
@@ -273,10 +283,20 @@ namespace LevelBuilderVR.Behaviours.Tools
             state.DragApplied = float3.zero;
 
             HybridLevel.SetDragOffset(-state.DragApplied);
+
+            if (state.HoveredVertex != Entity.Null)
+            {
+                var vertex = EntityManager.GetComponentData<Vertex>(state.HoveredVertex);
+
+                _gridOrigin.y = vertex.MinY;
+            }
         }
 
         private bool UpdateDragging(Hand hand, float3 handPos, ref HandState state)
         {
+            _gridOrigin.x = handPos.x;
+            _gridOrigin.z = handPos.z;
+
             var offset = handPos - state.DragOrigin;
 
             if (AxisAlignAction.GetState(hand.handType))
@@ -333,6 +353,8 @@ namespace LevelBuilderVR.Behaviours.Tools
         private bool StopDragging(ref HandState state)
         {
             HybridLevel.SetDragOffset(Vector3.zero);
+
+            state.IsDragging = false;
 
             return false;
         }

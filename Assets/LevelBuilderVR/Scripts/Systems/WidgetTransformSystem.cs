@@ -32,6 +32,9 @@ namespace LevelBuilderVR.Systems
                     var localToWorlds = _getVerticesVisible.ToComponentDataArray<LocalToWorld>(Allocator.TempJob);
                     var renderBoundsArr = _getVerticesVisible.ToComponentDataArray<RenderBounds>(Allocator.TempJob);
 
+                    // TODO
+                    var xScale = (1f / 64f) / math.length(levelLocalToWorld.Value.c0);
+
                     for (var i = 0; i < vertices.Length; ++i)
                     {
                         var vertex = vertices[i];
@@ -39,7 +42,7 @@ namespace LevelBuilderVR.Systems
                         var renderBounds = renderBoundsArr[i];
 
                         var translation = new float3(vertex.X, (vertex.MinY + vertex.MaxY) * 0.5f, vertex.Z);
-                        var scale = new float3(1f, (vertex.MaxY - vertex.MinY) * 0.5f, 1f);
+                        var scale = new float3(1f * xScale, (vertex.MaxY - vertex.MinY) * 0.5f, 1f * xScale);
                         var localTransform = float4x4.TRS(translation, quaternion.identity, scale);
                         var finalTransform = math.mul(levelLocalToWorld.Value, localTransform);
 

@@ -32,6 +32,10 @@ namespace LevelBuilderVR.Behaviours.Tools
 
         public abstract bool AllowTwoHanded { get; }
 
+        public virtual bool ShowGrid { get; }
+
+        public virtual Vector3 GridOrigin { get; }
+
         public float GridSnapTargetResolution = 0.01f;
 
         private static readonly float[] _sGridSnaps =
@@ -91,8 +95,6 @@ namespace LevelBuilderVR.Behaviours.Tools
 
         private void Update()
         {
-            UpdateGridSnap();
-
             if (Level == Entity.Null)
             {
                 Level = HybridLevel.Level;
@@ -103,6 +105,11 @@ namespace LevelBuilderVR.Behaviours.Tools
                 }
             }
 
+            if (IsSelected)
+            {
+                UpdateGridSnap();
+            }
+
             if (IsSelected && !_wasSelected)
             {
                 OnSelected();
@@ -110,6 +117,7 @@ namespace LevelBuilderVR.Behaviours.Tools
 
             if (!IsSelected && _wasSelected)
             {
+                HybridLevel.GridGuide.enabled = false;
                 OnDeselected();
             }
 
@@ -118,6 +126,15 @@ namespace LevelBuilderVR.Behaviours.Tools
             if (IsSelected)
             {
                 OnUpdate();
+
+                var showGrid = ShowGrid;
+                HybridLevel.GridGuide.enabled = showGrid;
+
+                if (showGrid)
+                {
+                    HybridLevel.GridGuide.Origin = GridOrigin;
+                    HybridLevel.GridGuide.MinorDivisionSize = GridSnap;
+                }
             }
         }
 

@@ -29,6 +29,8 @@ namespace LevelBuilderVR.Behaviours
 
         public string FilePath;
 
+        public GridGuide GridGuide;
+
         private void Start()
         {
             VertexWidgetHoverMaterial = Instantiate(VertexWidgetBaseMaterial);
@@ -54,8 +56,12 @@ namespace LevelBuilderVR.Behaviours
 
         public void SetDragOffset(Vector3 offset)
         {
-            VertexWidgetSelectedMaterial.SetVector("_DragOffset", offset);
-            VertexWidgetHoverSelectedMaterial.SetVector("_DragOffset", offset);
+            // TODO
+
+            var scale = math.length(transform.localScale.x) / (1f / 64f);
+
+            VertexWidgetSelectedMaterial.SetVector("_DragOffset", offset * scale);
+            VertexWidgetHoverSelectedMaterial.SetVector("_DragOffset", offset * scale);
         }
 
         private void Update()
@@ -64,6 +70,22 @@ namespace LevelBuilderVR.Behaviours
             {
                 return;
             }
+
+            GridGuide.transform.localRotation = transform.localRotation * Quaternion.AngleAxis(90f, Vector3.right);
+
+            GridGuide.transform.localScale = Vector3.one
+                * GridGuide.MinorDivisionSize
+                * GridGuide.MinorDivisionsPerUnit
+                * transform.localScale.x;
+
+            var localGuideOrigin = GridGuide.Origin;
+            var majorSize = GridGuide.MinorDivisionSize * GridGuide.MinorDivisionsPerMajor;
+
+            localGuideOrigin.x = Mathf.Round(localGuideOrigin.x / majorSize) * majorSize;
+            localGuideOrigin.z = Mathf.Round(localGuideOrigin.z / majorSize) * majorSize;
+
+            GridGuide.transform.localPosition = transform.TransformPoint(localGuideOrigin);
+            GridGuide.WorldSpaceOrigin = transform.TransformPoint(GridGuide.Origin);
 
             var em = World.DefaultGameObjectInjectionWorld.EntityManager;
 
