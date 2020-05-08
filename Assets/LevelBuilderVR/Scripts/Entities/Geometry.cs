@@ -352,7 +352,7 @@ namespace LevelBuilderVR.Entities
             return outEntity != Entity.Null;
         }
 
-        public static bool FindClosestHalfEdge(this EntityManager em, Entity level, float3 localPos,
+        public static bool FindClosestHalfEdge(this EntityManager em, Entity level, float3 localPos, bool alwaysAtMidpoint,
             out Entity outEntity, out float3 outClosestPoint, out Vertex outVirtualVertex)
         {
             const float epsilon = 1f / 65536f;
@@ -388,7 +388,7 @@ namespace LevelBuilderVR.Entities
 
                     var diff = localPos - p0;
 
-                    var u = math.dot(diff, tangent);
+                    var u = alwaysAtMidpoint ? length * 0.5f : math.dot(diff, tangent);
                     var v = math.dot(diff, normal);
 
                     var clampedU = math.clamp(u, 0f, length);

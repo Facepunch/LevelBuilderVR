@@ -129,29 +129,48 @@ namespace LevelBuilderVR.Behaviours.Tools
                 return true;
             }
 
+            var interactDist2 = InteractRadius * InteractRadius;
+
+            var newHoveredVertexWorldPos = float3.zero;
+            var newHoveredVertexDist2 = float.PositiveInfinity;
+
             if (EntityManager.FindClosestVertex(Level, localHandPos, out var newHoveredVertex, out var hoverPos))
             {
                 var hoverWorldPos = math.transform(localToWorld, hoverPos);
                 var dist2 = math.distancesq(hoverWorldPos, handPos);
 
-                if (dist2 > InteractRadius * InteractRadius)
+                if (dist2 > interactDist2)
                 {
                     newHoveredVertex = Entity.Null;
                 }
+
+                newHoveredVertexDist2 = dist2;
+                newHoveredVertexWorldPos = hoverWorldPos;
             }
 
             var newHoveredHalfEdge = Entity.Null;
-            if (!state.IsActionHeld && newHoveredVertex == Entity.Null && EntityManager.FindClosestHalfEdge(Level, localHandPos, out newHoveredHalfEdge, out hoverPos, out var virtualVertex))
+            if (!state.IsActionHeld && EntityManager.FindClosestHalfEdge(Level, localHandPos, newHoveredVertex != Entity.Null, out newHoveredHalfEdge, out hoverPos, out var virtualVertex))
             {
                 var hoverWorldPos = math.transform(localToWorld, hoverPos);
                 var dist2 = math.distancesq(hoverWorldPos, handPos);
 
-                if (dist2 > InteractRadius * InteractRadius)
+                if (newHoveredVertex != Entity.Null)
+                {
+                    var vertexEdgeDist2 = math.distancesq(hoverWorldPos, newHoveredVertexWorldPos);
+                    if (vertexEdgeDist2 > interactDist2)
+                    {
+                        // To fail the distance check later
+                        dist2 = float.PositiveInfinity;
+                    }
+                }
+
+                if (dist2 > interactDist2 || dist2 > newHoveredVertexDist2)
                 {
                     newHoveredHalfEdge = Entity.Null;
                 }
                 else
                 {
+                    newHoveredVertex = Entity.Null;
                     EntityManager.SetComponentData(_halfEdgeWidgetVertex, virtualVertex);
                 }
             }
@@ -317,7 +336,7 @@ namespace LevelBuilderVR.Behaviours.Tools
                 }
                 else
                 {
-                    var avg = (xScore + zScore) * .5f;
+                    var avg = (xScore + zScore) * 0.5f;
                     offset.x = math.sign(offset.x) * avg;
                     offset.z = math.sign(offset.z) * avg;
                 }
