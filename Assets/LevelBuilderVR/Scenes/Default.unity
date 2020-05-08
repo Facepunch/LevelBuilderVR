@@ -1091,9 +1091,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Material: {fileID: 2100000, guid: 466ca5482d753214285dbf47d3b0c0c9, type: 2}
-  HoverTint: {r: 0, g: 0.1606, b: 0.33, a: 1}
-  SelectedTint: {r: 0.89, g: 0.596, b: 0.09, a: 1}
-  HoverSelectedTint: {r: 1, g: 0.675, b: 0.098, a: 1}
+  HoverTint: {r: 0.32226565, g: 1, b: 0.3529412, a: 1}
+  SelectedTint: {r: 0.75, g: 0.43359375, b: 0.1640625, a: 1}
+  HoverSelectedTint: {r: 1, g: 0.5803922, b: 0.21960784, a: 1}
   VertexWidgetMesh: {fileID: -5495902117074765545, guid: 62fc510b66f27044f956de40f4e9e908,
     type: 3}
   VertexWidgetBaseMaterial: {fileID: 2100000, guid: 16469bd2c8164f949b69a8ca531d74e7,

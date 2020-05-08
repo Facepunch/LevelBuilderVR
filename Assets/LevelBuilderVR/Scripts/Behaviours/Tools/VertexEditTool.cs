@@ -196,6 +196,7 @@ namespace LevelBuilderVR.Behaviours.Tools
                 math.round(virtualVertex.Z / GridSnap) * GridSnap);
 
             EntityManager.InsertHalfEdge(state.HoveredHalfEdge, newVertex);
+            EntityManager.SetHovered(newVertex, true);
 
             state.HoveredVertex = newVertex;
             state.HoveredHalfEdge = Entity.Null;
