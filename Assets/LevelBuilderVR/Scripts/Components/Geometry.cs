@@ -16,7 +16,7 @@ namespace LevelBuilderVR
 
     public struct Level : IComponentData
     {
-
+        public uint Revision;
     }
 
     public struct WithinLevel : ISharedComponentData, IEquatable<WithinLevel>
@@ -51,7 +51,7 @@ namespace LevelBuilderVR
 
     public interface IFlatFace
     {
-        float Y { get; }
+        float Y { get; set; }
     }
 
     public struct Plane
@@ -63,13 +63,21 @@ namespace LevelBuilderVR
     public struct FlatFloor : IComponentData, IFlatFace
     {
         public float Y;
-        float IFlatFace.Y => Y;
+        float IFlatFace.Y
+        {
+            get => Y;
+            set => Y = value;
+        }
     }
 
     public struct FlatCeiling : IComponentData, IFlatFace
     {
         public float Y;
-        float IFlatFace.Y => Y;
+        float IFlatFace.Y
+        {
+            get => Y;
+            set => Y = value;
+        }
     }
 
     public struct SlopeVertex
@@ -80,9 +88,9 @@ namespace LevelBuilderVR
 
     public interface ISlopedFace
     {
-        SlopeVertex Anchor0 { get; }
-        SlopeVertex Anchor1 { get; }
-        SlopeVertex Anchor2 { get; }
+        SlopeVertex Anchor0 { get; set; }
+        SlopeVertex Anchor1 { get; set; }
+        SlopeVertex Anchor2 { get; set; }
     }
 
     public struct SlopedFloor : IComponentData, ISlopedFace
@@ -91,9 +99,23 @@ namespace LevelBuilderVR
         public SlopeVertex Anchor1;
         public SlopeVertex Anchor2;
 
-        SlopeVertex ISlopedFace.Anchor0 => Anchor0;
-        SlopeVertex ISlopedFace.Anchor1 => Anchor1;
-        SlopeVertex ISlopedFace.Anchor2 => Anchor2;
+        SlopeVertex ISlopedFace.Anchor0
+        {
+            get => Anchor0;
+            set => Anchor0 = value;
+        }
+
+        SlopeVertex ISlopedFace.Anchor1
+        {
+            get => Anchor1;
+            set => Anchor1 = value;
+        }
+
+        SlopeVertex ISlopedFace.Anchor2
+        {
+            get => Anchor2;
+            set => Anchor2 = value;
+        }
     }
 
     public struct SlopedCeiling : IComponentData, ISlopedFace
@@ -102,9 +124,23 @@ namespace LevelBuilderVR
         public SlopeVertex Anchor1;
         public SlopeVertex Anchor2;
 
-        SlopeVertex ISlopedFace.Anchor0 => Anchor0;
-        SlopeVertex ISlopedFace.Anchor1 => Anchor1;
-        SlopeVertex ISlopedFace.Anchor2 => Anchor2;
+        SlopeVertex ISlopedFace.Anchor0
+        {
+            get => Anchor0;
+            set => Anchor0 = value;
+        }
+
+        SlopeVertex ISlopedFace.Anchor1
+        {
+            get => Anchor1;
+            set => Anchor1 = value;
+        }
+
+        SlopeVertex ISlopedFace.Anchor2
+        {
+            get => Anchor2;
+            set => Anchor2 = value;
+        }
     }
 
     public struct Vertex : IComponentData

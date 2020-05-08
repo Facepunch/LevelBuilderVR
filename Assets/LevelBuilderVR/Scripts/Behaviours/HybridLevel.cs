@@ -46,11 +46,50 @@ namespace LevelBuilderVR.Behaviours
 
             if (!string.IsNullOrEmpty(FilePath) && File.Exists(FilePath))
             {
-
+                Load(FilePath);
             }
             else
             {
                 Level = World.DefaultGameObjectInjectionWorld.EntityManager.CreateLevelTemplate(new float3(8f, 3f, 12f));
+            }
+        }
+
+        private void OnApplicationQuit()
+        {
+            if (Level != Entity.Null)
+            {
+                Save(FilePath);
+            }
+        }
+
+        public void Save(string filePath)
+        {
+            Debug.Log($"Writing level to \"{filePath}\"");
+
+            var dir = Path.GetDirectoryName(filePath);
+
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+
+            using (var writer = File.CreateText(filePath))
+            {
+                var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+
+                em.SaveLevel(Level, writer);
+            }
+        }
+
+        public void Load(string filePath)
+        {
+            Debug.Log($"Loading level from \"{filePath}\"");
+
+            using (var reader = File.OpenText(filePath))
+            {
+                var em = World.DefaultGameObjectInjectionWorld.EntityManager;
+
+                Level = em.LoadLevel(reader);
             }
         }
 

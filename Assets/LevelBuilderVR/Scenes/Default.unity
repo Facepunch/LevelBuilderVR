@@ -452,6 +452,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Origin: {x: 0, y: 0, z: 0}
+  WorldSpaceOrigin: {x: 0, y: 0, z: 0}
   MinorDivisionSize: 0.015625
   MinorDivisionsPerMajor: 4
   MinorDivisionsPerUnit: 64
@@ -1101,7 +1102,7 @@ MonoBehaviour:
     type: 2}
   VertexWidgetSelectedMaterial: {fileID: 0}
   VertexWidgetHoverSelectedMaterial: {fileID: 0}
-  FilePath: 
+  FilePath: Testing.level
   GridGuide: {fileID: 701909644}
 --- !u!4 &2143160709
 Transform:

@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
 using LevelBuilderVR.Behaviours;
 using Unity.Collections;
 using Unity.Entities;
@@ -7,6 +9,8 @@ using Unity.Rendering;
 using Unity.Transforms;
 using UnityEngine;
 using UnityEngine.Rendering;
+using Valve.Newtonsoft.Json;
+using Valve.Newtonsoft.Json.Linq;
 using Object = UnityEngine.Object;
 
 namespace LevelBuilderVR.Entities
@@ -21,6 +25,7 @@ namespace LevelBuilderVR.Entities
         private static HybridLevel _sHybridLevel;
         private static EntityQuery _sSelectedQuery;
 
+        private static EntityQuery _sRoomsQuery;
         private static EntityQuery _sHalfEdgesQuery;
         private static EntityQuery _sVerticesQuery;
 
@@ -63,6 +68,12 @@ namespace LevelBuilderVR.Entities
                     All = new[] {ComponentType.ReadOnly<Selected>()}
                 });
 
+            _sRoomsQuery = em.CreateEntityQuery(
+                new EntityQueryDesc
+                {
+                    All = new[] { ComponentType.ReadOnly<Room>(), ComponentType.ReadOnly<WithinLevel>() }
+                });
+
             _sHalfEdgesQuery = em.CreateEntityQuery(
                 new EntityQueryDesc
                 {
@@ -99,11 +110,18 @@ namespace LevelBuilderVR.Entities
             em.SetComponentData(entity, new Identifier(Guid.NewGuid()));
         }
 
-        public static Entity CreateLevel(this EntityManager em)
+        public static Entity CreateLevel(this EntityManager em, Guid? guid = null)
         {
             var level = em.CreateEntity(_sLevelArchetype);
 
-            em.AssignNewIdentifier(level);
+            if (guid == null)
+            {
+                em.AssignNewIdentifier(level);
+            }
+            else
+            {
+                em.SetComponentData(level, new Identifier(guid.Value));
+            }
 
             em.SetComponentData(level, new LocalToWorld
             {
@@ -120,11 +138,18 @@ namespace LevelBuilderVR.Entities
             return level;
         }
 
-        public static Entity CreateRoom(this EntityManager em, Entity level, float? floor = null, float? ceiling = null)
+        public static Entity CreateRoom(this EntityManager em, Entity level, float? floor = null, float? ceiling = null, Guid? guid = null)
         {
             var room = em.CreateEntity(_sRoomArchetype);
 
-            em.AssignNewIdentifier(room);
+            if (guid == null)
+            {
+                em.AssignNewIdentifier(room);
+            }
+            else
+            {
+                em.SetComponentData(room, new Identifier(guid.Value));
+            }
 
             em.SetSharedComponentData(room, new WithinLevel(level));
 
@@ -168,11 +193,18 @@ namespace LevelBuilderVR.Entities
             return room;
         }
 
-        public static Entity CreateHalfEdge(this EntityManager em, Entity room, Entity vertex)
+        public static Entity CreateHalfEdge(this EntityManager em, Entity room, Entity vertex, Guid? guid = null)
         {
             var halfEdge = em.CreateEntity(_sHalfEdgeArchetype);
 
-            em.AssignNewIdentifier(halfEdge);
+            if (guid == null)
+            {
+                em.AssignNewIdentifier(halfEdge);
+            }
+            else
+            {
+                em.SetComponentData(halfEdge, new Identifier(guid.Value));
+            }
 
             var withinLevelData = em.GetSharedComponentData<WithinLevel>(room);
 
@@ -208,11 +240,18 @@ namespace LevelBuilderVR.Entities
             return halfEdgeEntity;
         }
 
-        public static Entity CreateVertex(this EntityManager em, Entity level, float x, float z)
+        public static Entity CreateVertex(this EntityManager em, Entity level, float x, float z, Guid? guid = null)
         {
             var vertex = em.CreateEntity(_sVertexArchetype);
 
-            em.AssignNewIdentifier(vertex);
+            if (guid == null)
+            {
+                em.AssignNewIdentifier(vertex);
+            }
+            else
+            {
+                em.SetComponentData(vertex, new Identifier(guid.Value));
+            }
 
             em.SetSharedComponentData(vertex, new WithinLevel(level));
 
@@ -436,6 +475,277 @@ namespace LevelBuilderVR.Entities
             halfEdges.Dispose();
 
             return outEntities.Count;
+        }
+
+        private static string GetIdentifierString(this EntityManager em, Entity entity)
+        {
+            if (!em.Exists(entity))
+            {
+                return null;
+            }
+
+            var ident = em.GetComponentData<Identifier>(entity);
+            return ident.Guid.ToString();
+        }
+
+        public static JObject ToJObject(this EntityManager em, SlopeVertex anchor)
+        {
+            return new JObject
+            {
+                { "vertex", em.GetIdentifierString(anchor.Vertex) },
+                { "y", anchor.Y }
+            };
+        }
+
+        public static JObject ToJObject(this EntityManager em, ISlopedFace face)
+        {
+            return new JObject
+            {
+                { "a", em.ToJObject(face.Anchor0) },
+                { "b", em.ToJObject(face.Anchor1) },
+                { "c", em.ToJObject(face.Anchor2) }
+            };
+        }
+
+        public const int JsonFormatVersion = 1;
+
+        public static void SaveLevel(this EntityManager em, Entity level, TextWriter writer)
+        {
+            var roomsObj = new JObject();
+            var halfEdgesObj = new JObject();
+            var verticesObj = new JObject();
+
+            _sRoomsQuery.SetSharedComponentFilter(new WithinLevel(level));
+            _sHalfEdgesQuery.SetSharedComponentFilter(new WithinLevel(level));
+            _sVerticesQuery.SetSharedComponentFilter(new WithinLevel(level));
+
+            var rooms = _sRoomsQuery.ToEntityArray(Allocator.TempJob);
+
+            foreach (var roomEnt in rooms)
+            {
+                var ident = em.GetIdentifierString(roomEnt);
+                var roomObj = new JObject();
+
+                if (em.HasComponent<FlatFloor>(roomEnt))
+                {
+                    var floor = em.GetComponentData<FlatFloor>(roomEnt);
+
+                    roomObj.Add("floor", floor.Y);
+                }
+                else if (em.HasComponent<SlopedFloor>(roomEnt))
+                {
+                    var floor = em.GetComponentData<SlopedFloor>(roomEnt);
+
+                    roomObj.Add("floor", em.ToJObject(floor));
+                }
+
+                if (em.HasComponent<FlatCeiling>(roomEnt))
+                {
+                    var ceiling = em.GetComponentData<FlatCeiling>(roomEnt);
+
+                    roomObj.Add("ceiling", ceiling.Y);
+                }
+                else if (em.HasComponent<SlopedFloor>(roomEnt))
+                {
+                    var ceiling = em.GetComponentData<SlopedCeiling>(roomEnt);
+
+                    roomObj.Add("ceiling", em.ToJObject(ceiling));
+                }
+
+                roomsObj.Add(ident, roomObj);
+            }
+
+            rooms.Dispose();
+
+            var halfEdges = _sHalfEdgesQuery.ToEntityArray(Allocator.TempJob);
+
+            foreach (var halfEdgeEnt in halfEdges)
+            {
+                var ident = em.GetIdentifierString(halfEdgeEnt);
+                var halfEdge = em.GetComponentData<HalfEdge>(halfEdgeEnt);
+
+                halfEdgesObj.Add(ident, new JObject
+                {
+                    { "room", em.GetIdentifierString(halfEdge.Room) },
+                    { "vertex", em.GetIdentifierString(halfEdge.Vertex) },
+                    { "next", em.GetIdentifierString(halfEdge.Next) }
+                });
+            }
+
+            halfEdges.Dispose();
+
+            var vertices = _sVerticesQuery.ToEntityArray(Allocator.TempJob);
+
+            foreach (var vertexEnt in vertices)
+            {
+                var ident = em.GetIdentifierString(vertexEnt);
+                var vertex = em.GetComponentData<Vertex>(vertexEnt);
+
+                verticesObj.Add(ident, new JObject
+                {
+                    { "x", vertex.X },
+                    { "z", vertex.Z }
+                });
+            }
+
+            vertices.Dispose();
+
+            var levelData = em.GetComponentData<Level>(level);
+            var revision = ++levelData.Revision;
+            em.SetComponentData(level, levelData);
+
+            var root = new JObject
+            {
+                { "formatVersion", JsonFormatVersion },
+                { "level", new JObject
+                {
+                    { "guid", em.GetIdentifierString(level) },
+                    { "revision", revision }
+                } },
+                { "rooms", roomsObj },
+                { "halfEdges", halfEdgesObj },
+                { "vertices", verticesObj }
+            };
+
+            writer.Write(root.ToString(Formatting.Indented));
+        }
+
+        private struct EntityJObject
+        {
+            public readonly Entity Entity;
+            public readonly JObject JObject;
+
+            public EntityJObject(Entity entity, JObject jObject)
+            {
+                Entity = entity;
+                JObject = jObject;
+            }
+        }
+
+        private static Entity FindEntity(this Dictionary<Guid, EntityJObject> dict, JToken jValue)
+        {
+            if (jValue == null)
+            {
+                return Entity.Null;
+            }
+
+            return dict[Guid.Parse((string) jValue)].Entity;
+        }
+
+        private static SlopeVertex FromJObject(this EntityManager em, Dictionary<Guid, EntityJObject> vertices,
+            JObject jObject)
+        {
+            return new SlopeVertex
+            {
+                Vertex = vertices.FindEntity(jObject["vertex"]),
+                Y = (float) jObject["y"]
+            };
+        }
+
+        private static void LoadFaceFromJToken<TFlat, TSloped>(this EntityManager em, Dictionary<Guid, EntityJObject> vertices,
+            Entity room, JToken jToken)
+            where TFlat : struct, IFlatFace, IComponentData
+            where TSloped : struct, ISlopedFace, IComponentData
+        {
+            if (em.HasComponent<TFlat>(room)) em.RemoveComponent<TFlat>(room);
+            if (em.HasComponent<TSloped>(room)) em.RemoveComponent<TSloped>(room);
+
+            if (jToken == null) return;
+
+            switch (jToken.Type)
+            {
+                case JTokenType.Float:
+                case JTokenType.Integer:
+                    em.AddComponentData(room, new TFlat
+                    {
+                        Y = (float) jToken
+                    });
+                    return;
+                case JTokenType.Object:
+                    em.AddComponentData(room, new TSloped
+                    {
+                        Anchor0 = em.FromJObject(vertices, (JObject) jToken["a"]),
+                        Anchor1 = em.FromJObject(vertices, (JObject) jToken["b"]),
+                        Anchor2 = em.FromJObject(vertices, (JObject) jToken["c"])
+                    });
+                    return;
+            }
+        }
+
+        public static Entity LoadLevel(this EntityManager em, TextReader reader)
+        {
+            var root = (JObject) JToken.ReadFrom(new JsonTextReader(reader));
+
+            var version = (int?) root["formatVersion"] ?? 1;
+            var levelObj = (JObject) root["level"];
+            var roomsObj = (JObject) root["rooms"];
+            var halfEdgesObj = (JObject) root["halfEdges"];
+            var verticesObj = (JObject) root["vertices"];
+
+            var level = em.CreateLevel(Guid.Parse((string) levelObj["guid"]));
+
+            var levelData = em.GetComponentData<Level>(level);
+            levelData.Revision = (uint) levelObj["revision"];
+            em.SetComponentData(level, levelData);
+
+            var rooms = new Dictionary<Guid, EntityJObject>();
+            var halfEdges = new Dictionary<Guid, EntityJObject>();
+            var vertices = new Dictionary<Guid, EntityJObject>();
+
+            // Create entities
+
+            foreach (var property in roomsObj)
+            {
+                var guid = Guid.Parse(property.Key);
+                var room = em.CreateRoom(level, guid: guid);
+
+                rooms.Add(guid, new EntityJObject(room, (JObject) property.Value));
+            }
+
+            foreach (var property in halfEdgesObj)
+            {
+                var guid = Guid.Parse(property.Key);
+                var halfEdge = em.CreateHalfEdge(level, Entity.Null, guid);
+
+                halfEdges.Add(guid, new EntityJObject(halfEdge, (JObject)property.Value));
+            }
+
+            foreach (var property in verticesObj)
+            {
+                var guid = Guid.Parse(property.Key);
+                var vertex = em.CreateVertex(level, 0f, 0f, guid);
+
+                vertices.Add(guid, new EntityJObject(vertex, (JObject)property.Value));
+            }
+
+            // Set component data
+
+            foreach (var pair in rooms.Values)
+            {
+                em.LoadFaceFromJToken<FlatFloor, SlopedFloor>(vertices, pair.Entity, pair.JObject["floor"]);
+                em.LoadFaceFromJToken<FlatCeiling, SlopedCeiling>(vertices, pair.Entity, pair.JObject["ceiling"]);
+            }
+
+            foreach (var pair in halfEdges.Values)
+            {
+                em.SetComponentData(pair.Entity, new HalfEdge
+                {
+                    Room = rooms.FindEntity(pair.JObject["room"]),
+                    Vertex = vertices.FindEntity(pair.JObject["vertex"]),
+                    Next = halfEdges.FindEntity(pair.JObject["next"])
+                });
+            }
+
+            foreach (var pair in vertices.Values)
+            {
+                em.SetComponentData(pair.Entity, new Vertex
+                {
+                    X = (float) pair.JObject["x"],
+                    Z = (float) pair.JObject["z"]
+                });
+            }
+
+            return level;
         }
     }
 }
