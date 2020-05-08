@@ -301,16 +301,24 @@ namespace LevelBuilderVR.Behaviours.Tools
 
             if (AxisAlignAction.GetState(hand.handType))
             {
+                var threshold = math.tan(math.PI / 8f);
+
                 var xScore = math.abs(offset.x);
                 var zScore = math.abs(offset.z);
 
-                if (xScore > zScore)
+                if (xScore * threshold > zScore)
                 {
                     offset.z = 0f;
                 }
-                else
+                else if (zScore * threshold > xScore)
                 {
                     offset.x = 0f;
+                }
+                else
+                {
+                    var avg = (xScore + zScore) * .5f;
+                    offset.x = math.sign(offset.x) * avg;
+                    offset.z = math.sign(offset.z) * avg;
                 }
             }
 
