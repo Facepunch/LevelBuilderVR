@@ -209,4 +209,9 @@ namespace LevelBuilderVR
     {
         public float3 Offset;
     }
+
+    public struct MergeOverlappingVertices : IComponentData
+    {
+
+    }
 }

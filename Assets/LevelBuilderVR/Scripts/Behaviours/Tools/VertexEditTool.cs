@@ -382,6 +382,8 @@ namespace LevelBuilderVR.Behaviours.Tools
         {
             HybridLevel.SetDragOffset(Vector3.zero);
 
+            EntityManager.AddComponent<MergeOverlappingVertices>(Level);
+
             state.IsDragging = false;
 
             return false;
