@@ -167,6 +167,12 @@ namespace LevelBuilderVR
         /// </summary>
         public Entity Next;
 
+        /// <summary>
+        /// Complementary <see cref="HalfEdge"/> going in the opposite
+        /// direction (can be Null).
+        /// </summary>
+        public Entity BackFace;
+
         public float MinY;
         public float MaxY;
     }

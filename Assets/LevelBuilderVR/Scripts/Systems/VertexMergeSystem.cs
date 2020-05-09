@@ -1,8 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using LevelBuilderVR.Entities;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using UnityEngine;
 
 namespace LevelBuilderVR.Systems
 {
@@ -40,7 +42,25 @@ namespace LevelBuilderVR.Systems
             return math.lengthsq(diff) <= 1f / (256f * 256f);
         }
 
-        private readonly Dictionary<Entity, Entity> _vertexReplacements = new Dictionary<Entity, Entity>();
+        private void HandleBackFaceCandidate(Entity entity, Entity nextVertex, ref HalfEdge halfEdge, ComponentDataFromEntity<HalfEdge> getHalfEdge)
+        {
+            var key = new HalfEdgeVertices(halfEdge.Vertex, nextVertex);
+
+            if (_backfaceCandidates.TryGetValue(key.Complement, out var backFace))
+            {
+                halfEdge.BackFace = backFace;
+
+                var backFaceHalfEdge = getHalfEdge[backFace];
+                backFaceHalfEdge.BackFace = entity;
+                getHalfEdge[backFace] = backFaceHalfEdge;
+
+                _backfaceCandidates.Remove(key.Complement);
+            }
+            else
+            {
+                _backfaceCandidates.Add(key, entity);
+            }
+        }
 
         private int CountHalfEdgesInLoop(Entity first, ComponentDataFromEntity<HalfEdge> getHalfEdge)
         {
@@ -81,6 +101,25 @@ namespace LevelBuilderVR.Systems
             {
                 var halfEdge = getHalfEdge[next];
 
+                // Make sure BackFace doesn't reference this HalfEdge
+
+                if (halfEdge.BackFace != Entity.Null)
+                {
+                    var complement = getHalfEdge[halfEdge.BackFace];
+
+                    if (complement.BackFace != next)
+                    {
+                        Debug.LogError("Invalid BackFace!");
+                    }
+                    else
+                    {
+                        complement.BackFace = Entity.Null;
+                        getHalfEdge[halfEdge.BackFace] = complement;
+
+                        HandleBackFaceCandidate(halfEdge.BackFace, complement.Vertex, ref complement, getHalfEdge);
+                    }
+                }
+
                 verticesToRemove.Add(halfEdge.Vertex);
 
                 getHalfEdge[next] = default;
@@ -97,7 +136,42 @@ namespace LevelBuilderVR.Systems
             public Entity OldRoom;
         }
 
+        private struct HalfEdgeVertices : IEquatable<HalfEdgeVertices>
+        {
+            public readonly Entity Prev;
+            public readonly Entity Next;
+
+            public HalfEdgeVertices(Entity prev, Entity next)
+            {
+                Prev = prev;
+                Next = next;
+            }
+
+            public HalfEdgeVertices Complement => new HalfEdgeVertices(Next, Prev);
+
+            public bool Equals(HalfEdgeVertices other)
+            {
+                return Prev.Equals(other.Prev) && Next.Equals(other.Next);
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is HalfEdgeVertices other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    return (Prev.GetHashCode() * 397) ^ Next.GetHashCode();
+                }
+            }
+        }
+
         private readonly List<NewRoomAssignment> _newRoomAssignments = new List<NewRoomAssignment>();
+
+        private readonly Dictionary<Entity, Entity> _vertexReplacements = new Dictionary<Entity, Entity>();
+        private readonly Dictionary<HalfEdgeVertices, Entity> _backfaceCandidates = new Dictionary<HalfEdgeVertices, Entity>();
 
         protected override void OnUpdate()
         {
@@ -117,6 +191,7 @@ namespace LevelBuilderVR.Systems
                     // Find unmoved vertices that overlap with a moved vertex
 
                     _vertexReplacements.Clear();
+                    _backfaceCandidates.Clear();
 
                     _selectedVertices.SetSharedComponentFilter(withinLevel);
                     _unselectedVertices.SetSharedComponentFilter(withinLevel);
@@ -138,6 +213,14 @@ namespace LevelBuilderVR.Systems
                             }
 
                             _vertexReplacements.Add(unselectedEntity, selectedEntity);
+
+                            if (!_vertexReplacements.ContainsKey(selectedEntity))
+                            {
+                                // A bit of a hack to help find new back faces
+                                _vertexReplacements.Add(selectedEntity, selectedEntity);
+                            }
+
+                            PostUpdateCommands.AddComponent<DirtyMesh>(selectedEntity);
                             PostUpdateCommands.DestroyEntity(unselectedEntity);
                             break;
                         }
@@ -157,10 +240,28 @@ namespace LevelBuilderVR.Systems
                         .WithAll<HalfEdge>()
                         .ForEach((Entity entity, ref HalfEdge halfEdge) =>
                         {
+                            var backfaceCandidate = false;
+
                             if (_vertexReplacements.TryGetValue(halfEdge.Vertex, out var newVertex))
                             {
+                                backfaceCandidate = true;
                                 halfEdge.Vertex = newVertex;
                             }
+
+                            var next = getHalfEdge[halfEdge.Next];
+
+                            if (_vertexReplacements.TryGetValue(next.Vertex, out var nextVertex))
+                            {
+                                backfaceCandidate = true;
+                            }
+                            else
+                            {
+                                nextVertex = next.Vertex;
+                            }
+
+                            if (!backfaceCandidate || halfEdge.BackFace != Entity.Null) return;
+
+                            HandleBackFaceCandidate(entity, nextVertex, ref halfEdge, getHalfEdge);
                         });
 
                     Entities
@@ -202,6 +303,8 @@ namespace LevelBuilderVR.Systems
                                 ceiling.Anchor2.Vertex = newVertex;
                             }
                         });
+
+                    _vertexReplacements.Clear();
 
                     // If two vertices of a room have been merged, the room will need to
                     // either be split in two, or some HalfEdges will need to be removed
@@ -271,6 +374,8 @@ namespace LevelBuilderVR.Systems
 
                         var oldRoomHalfEdge = entBeforeFirst;
                         var newRoomHalfEdge = entFirst;
+
+                        _backfaceCandidates.Clear();
 
                         if (oldRoomCount < 3 && newRoomCount < 3)
                         {

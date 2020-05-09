@@ -165,7 +165,7 @@ namespace LevelBuilderVR.Systems
                         var u0 = math.dot(tangent, new float3(vertex0.X, 0f, vertex0.Z));
                         var u1 = math.dot(tangent, new float3(vertex1.X, 0f, vertex1.Z));
 
-                        if (hasFloor && hasCeiling)
+                        if (hasFloor && hasCeiling && halfEdge.BackFace == Entity.Null)
                         {
                             int wall0, wall1, wall2, wall3;
 

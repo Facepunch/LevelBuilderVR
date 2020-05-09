@@ -276,21 +276,48 @@ namespace LevelBuilderVR.Entities
 
         public static Entity InsertHalfEdge(this EntityManager em, Entity prev, Entity vertex)
         {
-            var prevHalfEdge = em.GetComponentData<HalfEdge>(prev);
-            var halfEdgeEntity = em.CreateHalfEdge(prevHalfEdge.Room, vertex);
+            var hePrev = em.GetComponentData<HalfEdge>(prev);
+            var entNew = em.CreateHalfEdge(hePrev.Room, vertex);
 
-            var next = prevHalfEdge.Next;
-            prevHalfEdge.Next = halfEdgeEntity;
+            var entNext = hePrev.Next;
+            hePrev.Next = entNew;
 
-            em.SetComponentData(prev, prevHalfEdge);
-            em.SetComponentData(halfEdgeEntity, new HalfEdge
+            em.SetComponentData(entNew, new HalfEdge
             {
-                Room = prevHalfEdge.Room,
+                Room = hePrev.Room,
                 Vertex = vertex,
-                Next = next
+                Next = entNext,
+                BackFace = hePrev.BackFace
             });
 
-            return halfEdgeEntity;
+            if (hePrev.BackFace == Entity.Null)
+            {
+                em.SetComponentData(prev, hePrev);
+                return entNew;
+            }
+
+            // Back face
+
+            var entBackPrev = hePrev.BackFace;
+            var heBackPrev = em.GetComponentData<HalfEdge>(entBackPrev);
+            var entBackNew = em.CreateHalfEdge(heBackPrev.Room, vertex);
+
+            var entBackNext = heBackPrev.Next;
+            heBackPrev.Next = entBackNew;
+            hePrev.BackFace = entBackNew;
+
+            em.SetComponentData(prev, hePrev);
+            em.SetComponentData(entBackPrev, heBackPrev);
+
+            em.SetComponentData(entBackNew, new HalfEdge
+            {
+                Room = heBackPrev.Room,
+                Vertex = vertex,
+                Next = entBackNext,
+                BackFace = prev
+            });
+
+            return entNew;
         }
 
         public static Entity CreateVertex(this EntityManager em, Entity level, float x, float z, Guid? guid = null)
@@ -625,7 +652,8 @@ namespace LevelBuilderVR.Entities
                 {
                     { "room", em.GetIdentifierString(halfEdge.Room) },
                     { "vertex", em.GetIdentifierString(halfEdge.Vertex) },
-                    { "next", em.GetIdentifierString(halfEdge.Next) }
+                    { "next", em.GetIdentifierString(halfEdge.Next) },
+                    { "backFace", em.GetIdentifierString(halfEdge.BackFace) }
                 });
             }
 
@@ -681,7 +709,7 @@ namespace LevelBuilderVR.Entities
 
         private static Entity FindEntity(this Dictionary<Guid, EntityJObject> dict, JToken jValue)
         {
-            if (jValue == null)
+            if (jValue == null || jValue.Type == JTokenType.Null || jValue.Type == JTokenType.None)
             {
                 return Entity.Null;
             }
@@ -789,7 +817,8 @@ namespace LevelBuilderVR.Entities
                 {
                     Room = rooms.FindEntity(pair.JObject["room"]),
                     Vertex = vertices.FindEntity(pair.JObject["vertex"]),
-                    Next = halfEdges.FindEntity(pair.JObject["next"])
+                    Next = halfEdges.FindEntity(pair.JObject["next"]),
+                    BackFace = halfEdges.FindEntity(pair.JObject["backFace"])
                 });
             }
 
