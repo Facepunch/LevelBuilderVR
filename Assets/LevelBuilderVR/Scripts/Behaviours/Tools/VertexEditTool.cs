@@ -177,6 +177,20 @@ namespace LevelBuilderVR.Behaviours.Tools
                 }
             }
 
+            if (!state.IsActionHeld && EntityManager.FindClosestFloorCeiling(Level, localHandPos,
+                newHoveredVertex != Entity.Null || newHoveredHalfEdge != Entity.Null,
+                out var newHoveredRoom, out var newHoveredFaceKind, out hoverPos))
+            {
+                var hoverWorldPos = math.transform(localToWorld, hoverPos);
+
+                HybridLevel.ExtrudeWidget.gameObject.SetActive(true);
+                HybridLevel.ExtrudeWidget.transform.position = hoverWorldPos;
+            }
+            else
+            {
+                HybridLevel.ExtrudeWidget.gameObject.SetActive(false);
+            }
+
             if (state.HoveredVertex == newHoveredVertex && state.HoveredHalfEdge == newHoveredHalfEdge)
             {
                 return true;

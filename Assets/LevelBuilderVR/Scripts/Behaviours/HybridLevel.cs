@@ -21,6 +21,8 @@ namespace LevelBuilderVR.Behaviours
         public Mesh VertexWidgetMesh;
         public Material VertexWidgetBaseMaterial;
 
+        public Transform ExtrudeWidget;
+
         [HideInInspector]
         public Material VertexWidgetHoverMaterial;
         [HideInInspector]
@@ -46,6 +48,8 @@ namespace LevelBuilderVR.Behaviours
             SetDragOffset(Vector3.zero);
 
             GridGuide.enabled = false;
+
+            ExtrudeWidget.gameObject.SetActive(false);
 
             if (!Load(FilePath))
             {

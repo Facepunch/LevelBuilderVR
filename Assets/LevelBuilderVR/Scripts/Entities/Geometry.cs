@@ -505,58 +505,174 @@ namespace LevelBuilderVR.Entities
             return outEntity != Entity.Null;
         }
 
-        public static bool DestroyEntities(this EntityManager em, TempEntitySet entities)
+        private static bool GetFacePlane<TFlat, TSloped>(this EntityManager em, Entity roomEntity, out Plane plane)
+            where TFlat : struct, IComponentData, IFlatFace
+            where TSloped : struct, IComponentData, ISlopedFace
         {
-            if (entities.Count == 0)
+            if (em.HasComponent<TFlat>(roomEntity))
+            {
+                var flatFloor = em.GetComponentData<TFlat>(roomEntity);
+
+                plane = new Plane
+                {
+                    Normal = new float3(0f, 1f, 0f),
+                    Point = new float3(0f, flatFloor.Y, 0f)
+                };
+
+                return true;
+            }
+
+            if (em.HasComponent<TSloped>(roomEntity))
+            {
+                var slopedFloor = em.GetComponentData<TSloped>(roomEntity);
+
+                var vertex0 = em.GetComponentData<Vertex>(slopedFloor.Anchor0.Vertex);
+                var vertex1 = em.GetComponentData<Vertex>(slopedFloor.Anchor1.Vertex);
+                var vertex2 = em.GetComponentData<Vertex>(slopedFloor.Anchor2.Vertex);
+
+                var a = new float3(vertex0.X, slopedFloor.Anchor0.Y, vertex0.Z);
+                var b = new float3(vertex1.X, slopedFloor.Anchor1.Y, vertex1.Z);
+                var c = new float3(vertex2.X, slopedFloor.Anchor2.Y, vertex2.Z);
+
+                var n = math.normalize(math.cross(b - a, c - a));
+
+                plane = new Plane
+                {
+                    Normal = n.y < 0f ? -n : n,
+                    Point = (a + b + c) / 3f
+                };
+
+                return true;
+            }
+
+            plane = new Plane
+            {
+                Normal = new float3(0f, 1f, 0f),
+                Point = float3.zero
+            };
+
+            return false;
+        }
+
+        public static bool IsPointWithinHalfEdgeLoop(this EntityManager em, Entity first, float3 localPos)
+        {
+            var winding = 0;
+
+            var entFirst = first;
+            var heFirst = em.GetComponentData<HalfEdge>(entFirst);
+            var vFirst = em.GetComponentData<Vertex>(heFirst.Vertex);
+            var a = new float2(vFirst.X, vFirst.Z);
+
+            var entNext = heFirst.Next;
+
+            var p = new float2(localPos.x, localPos.z);
+            var n = new float2(0f, 1f);
+
+            var np = math.dot(n, p);
+
+            do
+            {
+                var heNext = em.GetComponentData<HalfEdge>(entNext);
+                var vNext = em.GetComponentData<Vertex>(heNext.Vertex);
+
+                var b = new float2(vNext.X, vNext.Z);
+
+                var diff = b - a;
+
+                var t = (np - math.dot(n, a)) / math.dot(n, diff);
+                var intersection = a + diff * t;
+
+                if (t >= 0f && t <= 1f && intersection.x >= p.x)
+                {
+                    winding += Math.Sign(a.y - b.y);
+                }
+
+                entNext = heNext.Next;
+                a = b;
+            } while (entNext != heFirst.Next);
+
+            return winding != 0;
+        }
+
+        private static bool FindClosestOnPlane(Plane plane, float3 localPos, ref float bestDist2, out float3 outClosestPoint)
+        {
+            outClosestPoint = float3.zero;
+
+            var onPlane = plane.GetClosestPoint(localPos);
+            var dist2 = math.distancesq(onPlane, localPos);
+
+            if (dist2 >= bestDist2)
             {
                 return false;
             }
 
-            var toDestroy = new NativeArray<Entity>(entities.Count, Allocator.TempJob);
-
-            for (var i = 0; i < entities.Count; ++i)
-            {
-                toDestroy[i] = entities[i];
-            }
-
-            em.DestroyEntity(toDestroy);
-
-            toDestroy.Dispose();
-
+            bestDist2 = dist2;
+            outClosestPoint = onPlane;
             return true;
         }
 
-        /// <summary>
-        /// Find all <see cref="Entity"/> instances with a <see cref="Vertex"/>, that
-        /// aren't referenced by any <see cref="HalfEdge"/>s.
-        /// </summary>
-        public static int GetUnreferencedVertices(this EntityManager em, Entity level, TempEntitySet outEntities)
+        [ThreadStatic] private static Dictionary<Entity, Entity> _sRoomHalfEdges;
+
+        public static bool FindClosestFloorCeiling(this EntityManager em, Entity level, float3 localPos,
+            bool alwaysAtMidpoint, out Entity outRoom, out FaceKind outKind, out float3 outClosestPoint)
         {
-            outEntities.Clear();
+            if (_sRoomHalfEdges == null)
+            {
+                _sRoomHalfEdges = new Dictionary<Entity, Entity>();
+            }
 
             var withinLevel = em.GetWithinLevel(level);
 
-            // Get all vertices
-
-            _sVerticesQuery.SetSharedComponentFilter(withinLevel);
-
-            outEntities.AddRange(_sVerticesQuery);
-
-            // Remove vertices from vertexSet that are referenced
+            _sRoomHalfEdges.Clear();
 
             _sHalfEdgesQuery.SetSharedComponentFilter(withinLevel);
-
-            var halfEdges = _sHalfEdgesQuery.ToComponentDataArray<HalfEdge>(Allocator.TempJob);
-
-            for (var i = 0; i < halfEdges.Length; ++i)
+            using (var halfEdges = _sHalfEdgesQuery.ToComponentDataArray<HalfEdge>(Allocator.TempJob))
             {
-                var halfEdge = halfEdges[i];
-                outEntities.Remove(halfEdge.Vertex);
+                foreach (var halfEdge in halfEdges)
+                {
+                    if (_sRoomHalfEdges.ContainsKey(halfEdge.Room))
+                    {
+                        continue;
+                    }
+
+                    _sRoomHalfEdges.Add(halfEdge.Room, halfEdge.Next);
+                }
             }
 
-            halfEdges.Dispose();
+            var bestDist2 = float.PositiveInfinity;
 
-            return outEntities.Count;
+            outRoom = Entity.Null;
+            outKind = FaceKind.None;
+            outClosestPoint = localPos;
+
+            _sRoomsQuery.SetSharedComponentFilter(withinLevel);
+            using (var roomEntities = _sRoomsQuery.ToEntityArray(Allocator.TempJob))
+            {
+                foreach (var roomEntity in roomEntities)
+                {
+                    var firstHalfEdgeEntity = _sRoomHalfEdges[roomEntity];
+
+                    if (em.GetFacePlane<FlatFloor, SlopedFloor>(roomEntity, out var floor)
+                        && FindClosestOnPlane(floor, localPos, ref bestDist2, out var closestOnFloor)
+                        && em.IsPointWithinHalfEdgeLoop(firstHalfEdgeEntity, closestOnFloor))
+                    {
+                        outRoom = roomEntity;
+                        outKind = FaceKind.Floor;
+                        outClosestPoint = closestOnFloor;
+                    }
+
+                    if (em.GetFacePlane<FlatCeiling, SlopedCeiling>(roomEntity, out var ceiling)
+                        && FindClosestOnPlane(ceiling, localPos, ref bestDist2, out var closestOnCeiling)
+                        && em.IsPointWithinHalfEdgeLoop(firstHalfEdgeEntity, closestOnCeiling))
+                    {
+                        outRoom = roomEntity;
+                        outKind = FaceKind.Ceiling;
+                        outClosestPoint = closestOnCeiling;
+                    }
+                }
+            }
+
+            return outRoom != Entity.Null;
         }
 
         private static string GetIdentifierString(this EntityManager em, Entity entity)

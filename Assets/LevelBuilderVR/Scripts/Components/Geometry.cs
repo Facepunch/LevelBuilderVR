@@ -1,4 +1,5 @@
 ﻿using System;
+using JetBrains.Annotations;
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -49,6 +50,13 @@ namespace LevelBuilderVR
 
     }
 
+    public enum FaceKind
+    {
+        None,
+        Floor,
+        Ceiling
+    }
+
     public interface IFlatFace
     {
         float Y { get; set; }
@@ -58,6 +66,12 @@ namespace LevelBuilderVR
     {
         public float3 Point;
         public float3 Normal;
+
+        [Pure]
+        public float3 GetClosestPoint(float3 pos)
+        {
+            return pos - math.dot(pos - Point, Normal) * Normal;
+        }
     }
 
     public struct FlatFloor : IComponentData, IFlatFace
