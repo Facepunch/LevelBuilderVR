@@ -215,12 +215,33 @@ namespace LevelBuilderVR.Entities
             em.AddComponent<DirtyMesh>(room);
         }
 
-        public static Entity CopyRoom(this EntityCommandBuffer cmb, Entity otherRoom)
+        public static Entity CopyRoom(this EntityManager em, Entity oldRoom)
         {
-            var room = cmb.CreateEntity(_sRoomArchetype);
+            var room = em.CreateEntity(_sRoomArchetype);
 
-            cmb.AssignNewIdentifier(room);
-            cmb.AddComponent(room, new CopyRoom { Room = otherRoom });
+            em.AssignNewIdentifier(room);
+
+            em.SetSharedComponentData(room, em.GetSharedComponentData<WithinLevel>(oldRoom));
+
+            if (em.HasComponent<FlatFloor>(oldRoom))
+            {
+                em.AddComponentData(room, em.GetComponentData<FlatFloor>(oldRoom));
+            }
+            else if (em.HasComponent<SlopedFloor>(oldRoom))
+            {
+                em.AddComponentData(room, em.GetComponentData<SlopedFloor>(oldRoom));
+            }
+
+            if (em.HasComponent<FlatCeiling>(oldRoom))
+            {
+                em.AddComponentData(room, em.GetComponentData<FlatCeiling>(oldRoom));
+            }
+            else if (em.HasComponent<SlopedCeiling>(oldRoom))
+            {
+                em.AddComponentData(room, em.GetComponentData<SlopedCeiling>(oldRoom));
+            }
+
+            em.SetupRoomRendering(room);
 
             return room;
         }

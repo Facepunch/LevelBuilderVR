@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using LevelBuilderVR.Entities;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -44,11 +45,7 @@ namespace LevelBuilderVR.Behaviours
 
             SetDragOffset(Vector3.zero);
 
-            if (!string.IsNullOrEmpty(FilePath) && File.Exists(FilePath))
-            {
-                Load(FilePath);
-            }
-            else
+            if (!Load(FilePath))
             {
                 Level = World.DefaultGameObjectInjectionWorld.EntityManager.CreateLevelTemplate(new float3(8f, 3f, 12f));
             }
@@ -81,16 +78,36 @@ namespace LevelBuilderVR.Behaviours
             }
         }
 
-        public void Load(string filePath)
+        public bool Load(string filePath)
         {
+            if (string.IsNullOrEmpty(filePath))
+            {
+                return false;
+            }
+
+            if (!File.Exists(filePath))
+            {
+                return false;
+            }
+
             Debug.Log($"Loading level from \"{filePath}\"");
 
             using (var reader = File.OpenText(filePath))
             {
                 var em = World.DefaultGameObjectInjectionWorld.EntityManager;
 
-                Level = em.LoadLevel(reader);
+                try
+                {
+                    Level = em.LoadLevel(reader);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(e);
+                    return false;
+                }
             }
+
+            return true;
         }
 
         public void SetDragOffset(Vector3 offset)

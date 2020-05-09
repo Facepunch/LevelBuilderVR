@@ -46,7 +46,7 @@ namespace LevelBuilderVR
 
     public struct Room : IComponentData
     {
-        public int HalfEdgeCount;
+
     }
 
     public interface IFlatFace
@@ -216,8 +216,9 @@ namespace LevelBuilderVR
 
     }
 
-    public struct CopyRoom : IComponentData
+    public struct AssignToNewRoom : IComponentData
     {
-        public Entity Room;
+        public Entity OldRoom;
+        public Entity NewRoom;
     }
 }

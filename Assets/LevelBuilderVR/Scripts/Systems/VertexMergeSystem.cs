@@ -13,7 +13,6 @@ namespace LevelBuilderVR.Systems
         private EntityQuery _unselectedVertices;
 
         private EntityQuery _halfEdgesMutable;
-        private EntityQuery _roomsMutable;
 
         protected override void OnCreate()
         {
@@ -31,11 +30,6 @@ namespace LevelBuilderVR.Systems
                 .WithAllReadOnly<WithinLevel>()
                 .WithAll<HalfEdge>()
                 .ToEntityQuery();
-
-            _roomsMutable = Entities
-                .WithAllReadOnly<WithinLevel>()
-                .WithAll<Room>()
-                .ToEntityQuery();
         }
 
         private static bool IsOverlapping(in Vertex a, in Vertex b)
@@ -47,6 +41,23 @@ namespace LevelBuilderVR.Systems
         }
 
         private readonly Dictionary<Entity, Entity> _vertexReplacements = new Dictionary<Entity, Entity>();
+
+        private int CountHalfEdgesInLoop(Entity first, ComponentDataFromEntity<HalfEdge> getHalfEdge)
+        {
+            var next = first;
+            var count = 0;
+
+            do
+            {
+                var halfEdge = getHalfEdge[next];
+
+                ++count;
+
+                next = halfEdge.Next;
+            } while (next != first);
+
+            return count;
+        }
 
         private void SetRoomInEdgeLoop(Entity first, Entity room, ComponentDataFromEntity<HalfEdge> getHalfEdge)
         {
@@ -80,11 +91,20 @@ namespace LevelBuilderVR.Systems
             } while (next != first);
         }
 
+        private struct NewRoomAssignment
+        {
+            public Entity FirstHalfEdge;
+            public Entity OldRoom;
+        }
+
+        private readonly List<NewRoomAssignment> _newRoomAssignments = new List<NewRoomAssignment>();
+
         protected override void OnUpdate()
         {
             var getVertex = GetComponentDataFromEntity<Vertex>(true);
             var getHalfEdge = GetComponentDataFromEntity<HalfEdge>(false);
-            var getRoom = GetComponentDataFromEntity<Room>(false);
+
+            _newRoomAssignments.Clear();
 
             Entities
                 .WithAllReadOnly<Level, MergeOverlappingVertices>()
@@ -93,23 +113,6 @@ namespace LevelBuilderVR.Systems
                     var withinLevel = EntityManager.GetWithinLevel(level);
 
                     PostUpdateCommands.RemoveComponent<MergeOverlappingVertices>(level);
-
-                    // Clear room HalfEdge counts
-
-                    _roomsMutable.SetSharedComponentFilter(withinLevel);
-
-                    var rooms = _roomsMutable.ToComponentDataArray<Room>(Allocator.TempJob);
-
-                    for (var i = 0; i < rooms.Length; ++i)
-                    {
-                        var room = rooms[i];
-                        room.HalfEdgeCount = 0;
-                        rooms[i] = room;
-                    }
-
-                    _roomsMutable.CopyFromComponentDataArray(rooms);
-
-                    rooms.Dispose();
 
                     // Find unmoved vertices that overlap with a moved vertex
 
@@ -152,18 +155,12 @@ namespace LevelBuilderVR.Systems
 
                     Entities
                         .WithAll<HalfEdge>()
-                        .ForEach((ref HalfEdge halfEdge) =>
+                        .ForEach((Entity entity, ref HalfEdge halfEdge) =>
                         {
                             if (_vertexReplacements.TryGetValue(halfEdge.Vertex, out var newVertex))
                             {
                                 halfEdge.Vertex = newVertex;
                             }
-
-                            // Also update room edge count
-
-                            var room = getRoom[halfEdge.Room];
-                            room.HalfEdgeCount += 1;
-                            getRoom[halfEdge.Room] = room;
                         });
 
                     Entities
@@ -270,12 +267,7 @@ namespace LevelBuilderVR.Systems
                             continue;
                         }
 
-                        var oldRoomCount = getRoom[oldRoom].HalfEdgeCount - newRoomCount;
-
-                        getRoom[oldRoom] = new Room
-                        {
-                            HalfEdgeCount = oldRoomCount
-                        };
+                        var oldRoomCount = CountHalfEdgesInLoop(entBeforeFirst, getHalfEdge);
 
                         var oldRoomHalfEdge = entBeforeFirst;
                         var newRoomHalfEdge = entFirst;
@@ -301,10 +293,13 @@ namespace LevelBuilderVR.Systems
                         {
                             // Need to create a new room
 
-                            var newRoom = PostUpdateCommands.CopyRoom(heFirst.Room);
                             var smallestRoomHalfEdge = newRoomCount < oldRoomCount ? newRoomHalfEdge : oldRoomHalfEdge;
 
-                            SetRoomInEdgeLoop(smallestRoomHalfEdge, newRoom, getHalfEdge);
+                            _newRoomAssignments.Add(new NewRoomAssignment
+                            {
+                                FirstHalfEdge = smallestRoomHalfEdge,
+                                OldRoom = oldRoom
+                            });
                         }
                     }
 
@@ -313,7 +308,6 @@ namespace LevelBuilderVR.Systems
                     foreach (var entity in halfEdges)
                     {
                         var halfEdge = getHalfEdge[entity];
-
                         verticesToRemove.Remove(halfEdge.Vertex);
                     }
 
@@ -328,6 +322,19 @@ namespace LevelBuilderVR.Systems
 
                     verticesToRemove.Dispose();
                 });
+
+            if (_newRoomAssignments.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var newRoomAssignment in _newRoomAssignments)
+            {
+                var newRoom = EntityManager.CopyRoom(newRoomAssignment.OldRoom);
+                getHalfEdge = GetComponentDataFromEntity<HalfEdge>(false);
+
+                SetRoomInEdgeLoop(newRoomAssignment.FirstHalfEdge, newRoom, getHalfEdge);
+            }
         }
     }
 }
