@@ -1,4 +1,5 @@
 ﻿using LevelBuilderVR.Behaviours;
+using LevelBuilderVR.Entities;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -43,6 +44,7 @@ namespace LevelBuilderVR.Systems
                 .ForEach((Entity levelEntity, ref WidgetsVisible widgetsVisible) =>
                 {
                     var toHideQuery = _getRenderableVertices;
+                    var withinLevel = EntityManager.GetWithinLevel(levelEntity);
 
                     NativeArray<Entity> entities;
 
@@ -50,7 +52,7 @@ namespace LevelBuilderVR.Systems
                     {
                         toHideQuery = _getHiddenVertices;
 
-                        _getNonRenderableVertices.SetSharedComponentFilter(new WithinLevel(levelEntity));
+                        _getNonRenderableVertices.SetSharedComponentFilter(withinLevel);
                         entities = _getNonRenderableVertices.ToEntityArray(Allocator.TempJob);
 
                         var renderMesh = new RenderMesh
@@ -74,7 +76,7 @@ namespace LevelBuilderVR.Systems
                         entities.Dispose();
                     }
 
-                    toHideQuery.SetSharedComponentFilter(new WithinLevel(levelEntity));
+                    toHideQuery.SetSharedComponentFilter(withinLevel);
                     entities = toHideQuery.ToEntityArray(Allocator.TempJob);
 
                     for (var i = 0; i < entities.Length; ++i)

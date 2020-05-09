@@ -101,9 +101,11 @@ namespace LevelBuilderVR.Behaviours.Tools
 
         protected override void OnSelectLevel(Entity level)
         {
-            _getSelectedVertices.SetSharedComponentFilter(new WithinLevel(Level));
-            _getHalfEdges.SetSharedComponentFilter(new WithinLevel(Level));
-            _getHalfEdgesWritable.SetSharedComponentFilter(new WithinLevel(Level));
+            var withinLevel = EntityManager.GetWithinLevel(level);
+
+            _getSelectedVertices.SetSharedComponentFilter(withinLevel);
+            _getHalfEdges.SetSharedComponentFilter(withinLevel);
+            _getHalfEdgesWritable.SetSharedComponentFilter(withinLevel);
         }
 
         private bool UpdateHover(Hand hand, ref HandState state, out float3 localHandPos)

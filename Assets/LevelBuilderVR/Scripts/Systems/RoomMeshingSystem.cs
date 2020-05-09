@@ -1,4 +1,5 @@
-﻿using Unity.Collections;
+﻿using LevelBuilderVR.Entities;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Rendering;
@@ -17,6 +18,7 @@ namespace LevelBuilderVR.Systems
 
         private EntityQuery _changedRoomsQuery;
         private EntityQuery _halfEdgesQuery;
+        private EntityQuery _roomsQuery;
 
         protected override void OnCreate()
         {
@@ -28,6 +30,11 @@ namespace LevelBuilderVR.Systems
 
             _halfEdgesQuery = Entities
                 .WithAll<HalfEdge>()
+                .ToEntityQuery();
+
+            _roomsQuery = Entities
+                .WithAllReadOnly<Room, RenderMesh, WithinLevel>()
+                .WithAll<LocalToWorld, RenderBounds>()
                 .ToEntityQuery();
         }
 
@@ -309,21 +316,40 @@ namespace LevelBuilderVR.Systems
             var getLocalToWorld = GetComponentDataFromEntity<LocalToWorld>();
 
             Entities
-                .WithAllReadOnly<Room, RenderMesh, WithinLevel>()
-                .WithAll<LocalToWorld, RenderBounds>()
-                .ForEach((Entity entity, ref LocalToWorld localToWorld, ref RenderBounds renderBounds) =>
+                .WithAllReadOnly<Level>()
+                .ForEach(level =>
                 {
-                    var renderMesh = EntityManager.GetSharedComponentData<RenderMesh>(entity);
-                    var withinLevel = EntityManager.GetSharedComponentData<WithinLevel>(entity);
+                    var levelLocalToWorld = getLocalToWorld[level];
 
-                    localToWorld = getLocalToWorld[withinLevel.Level];
+                    _roomsQuery.SetSharedComponentFilter(EntityManager.GetWithinLevel(level));
 
-                    renderBounds.Value = new AABB
+                    var rooms = _roomsQuery.ToEntityArray(Allocator.TempJob);
+                    var localToWorlds = _roomsQuery.ToComponentDataArray<LocalToWorld>(Allocator.TempJob);
+                    var renderBoundses = _roomsQuery.ToComponentDataArray<RenderBounds>(Allocator.TempJob);
+
+                    for (var i = 0; i < rooms.Length; ++i)
                     {
-                        Center = renderMesh.mesh.bounds.center,
-                        Extents = renderMesh.mesh.bounds.extents
-                    };
+                        var renderMesh = EntityManager.GetSharedComponentData<RenderMesh>(rooms[i]);
+
+                        localToWorlds[i] = levelLocalToWorld;
+                        renderBoundses[i] = new RenderBounds
+                        {
+                            Value = new AABB
+                            {
+                                Center = renderMesh.mesh.bounds.center,
+                                Extents = renderMesh.mesh.bounds.extents
+                            }
+                        };
+                    }
+
+                    _roomsQuery.CopyFromComponentDataArray(localToWorlds);
+                    _roomsQuery.CopyFromComponentDataArray(renderBoundses);
+
+                    rooms.Dispose();
+                    localToWorlds.Dispose();
+                    renderBoundses.Dispose();
                 });
+
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using Unity.Collections;
+﻿using LevelBuilderVR.Entities;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Rendering;
@@ -26,7 +27,7 @@ namespace LevelBuilderVR.Systems
                 .WithAllReadOnly<Level, WidgetsVisible, LocalToWorld>()
                 .ForEach((Entity levelEntity, ref WidgetsVisible widgetsVisible, ref LocalToWorld levelLocalToWorld) =>
                 {
-                    _getVerticesVisible.SetSharedComponentFilter(new WithinLevel(levelEntity));
+                    _getVerticesVisible.SetSharedComponentFilter(EntityManager.GetWithinLevel(levelEntity));
 
                     var vertices = _getVerticesVisible.ToComponentDataArray<Vertex>(Allocator.TempJob);
                     var localToWorlds = _getVerticesVisible.ToComponentDataArray<LocalToWorld>(Allocator.TempJob);

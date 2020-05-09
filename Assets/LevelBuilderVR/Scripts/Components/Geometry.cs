@@ -21,16 +21,16 @@ namespace LevelBuilderVR
 
     public struct WithinLevel : ISharedComponentData, IEquatable<WithinLevel>
     {
-        public readonly Entity Level;
+        public readonly Guid LevelGuid;
 
-        public WithinLevel(Entity level)
+        public WithinLevel(Identifier levelIdent)
         {
-            Level = level;
+            LevelGuid = levelIdent.Guid;
         }
 
         public bool Equals(WithinLevel other)
         {
-            return Level.Equals(other.Level);
+            return LevelGuid.Equals(other.LevelGuid);
         }
 
         public override bool Equals(object obj)
@@ -40,13 +40,13 @@ namespace LevelBuilderVR
 
         public override int GetHashCode()
         {
-            return Level.GetHashCode();
+            return LevelGuid.GetHashCode();
         }
     }
 
     public struct Room : IComponentData
     {
-
+        public int HalfEdgeCount;
     }
 
     public interface IFlatFace
@@ -82,6 +82,7 @@ namespace LevelBuilderVR
 
     public struct SlopeVertex
     {
+        // TODO: new format without referencing vertices
         public Entity Vertex;
         public float Y;
     }
@@ -213,5 +214,10 @@ namespace LevelBuilderVR
     public struct MergeOverlappingVertices : IComponentData
     {
 
+    }
+
+    public struct CopyRoom : IComponentData
+    {
+        public Entity Room;
     }
 }

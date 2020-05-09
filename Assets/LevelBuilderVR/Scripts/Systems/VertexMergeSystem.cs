@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using LevelBuilderVR.Entities;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -12,6 +13,7 @@ namespace LevelBuilderVR.Systems
         private EntityQuery _unselectedVertices;
 
         private EntityQuery _halfEdgesMutable;
+        private EntityQuery _roomsMutable;
 
         protected override void OnCreate()
         {
@@ -29,6 +31,11 @@ namespace LevelBuilderVR.Systems
                 .WithAllReadOnly<WithinLevel>()
                 .WithAll<HalfEdge>()
                 .ToEntityQuery();
+
+            _roomsMutable = Entities
+                .WithAllReadOnly<WithinLevel>()
+                .WithAll<Room>()
+                .ToEntityQuery();
         }
 
         private static bool IsOverlapping(in Vertex a, in Vertex b)
@@ -41,23 +48,75 @@ namespace LevelBuilderVR.Systems
 
         private readonly Dictionary<Entity, Entity> _vertexReplacements = new Dictionary<Entity, Entity>();
 
+        private void SetRoomInEdgeLoop(Entity first, Entity room, ComponentDataFromEntity<HalfEdge> getHalfEdge)
+        {
+            var next = first;
+
+            do
+            {
+                var halfEdge = getHalfEdge[next];
+                halfEdge.Room = room;
+                getHalfEdge[next] = halfEdge;
+
+                next = halfEdge.Next;
+            } while (next != first);
+        }
+
+        private void RemoveHalfEdgesInLoop(Entity first, TempEntitySet verticesToRemove, ComponentDataFromEntity<HalfEdge> getHalfEdge)
+        {
+            var next = first;
+
+            do
+            {
+                var halfEdge = getHalfEdge[next];
+
+                verticesToRemove.Add(halfEdge.Vertex);
+
+                getHalfEdge[next] = default;
+
+                PostUpdateCommands.DestroyEntity(next);
+
+                next = halfEdge.Next;
+            } while (next != first);
+        }
+
         protected override void OnUpdate()
         {
             var getVertex = GetComponentDataFromEntity<Vertex>(true);
             var getHalfEdge = GetComponentDataFromEntity<HalfEdge>(false);
+            var getRoom = GetComponentDataFromEntity<Room>(false);
 
             Entities
                 .WithAllReadOnly<Level, MergeOverlappingVertices>()
                 .ForEach(level =>
                 {
+                    var withinLevel = EntityManager.GetWithinLevel(level);
+
                     PostUpdateCommands.RemoveComponent<MergeOverlappingVertices>(level);
+
+                    // Clear room HalfEdge counts
+
+                    _roomsMutable.SetSharedComponentFilter(withinLevel);
+
+                    var rooms = _roomsMutable.ToComponentDataArray<Room>(Allocator.TempJob);
+
+                    for (var i = 0; i < rooms.Length; ++i)
+                    {
+                        var room = rooms[i];
+                        room.HalfEdgeCount = 0;
+                        rooms[i] = room;
+                    }
+
+                    _roomsMutable.CopyFromComponentDataArray(rooms);
+
+                    rooms.Dispose();
 
                     // Find unmoved vertices that overlap with a moved vertex
 
                     _vertexReplacements.Clear();
 
-                    _selectedVertices.SetSharedComponentFilter(new WithinLevel(level));
-                    _unselectedVertices.SetSharedComponentFilter(new WithinLevel(level));
+                    _selectedVertices.SetSharedComponentFilter(withinLevel);
+                    _unselectedVertices.SetSharedComponentFilter(withinLevel);
 
                     var selectedVertices = _selectedVertices.ToEntityArray(Allocator.TempJob);
                     var unselectedVertices = _unselectedVertices.ToEntityArray(Allocator.TempJob);
@@ -99,6 +158,12 @@ namespace LevelBuilderVR.Systems
                             {
                                 halfEdge.Vertex = newVertex;
                             }
+
+                            // Also update room edge count
+
+                            var room = getRoom[halfEdge.Room];
+                            room.HalfEdgeCount += 1;
+                            getRoom[halfEdge.Room] = room;
                         });
 
                     Entities
@@ -141,54 +206,127 @@ namespace LevelBuilderVR.Systems
                             }
                         });
 
-                    // Destroy degenerate HalfEdges
+                    // If two vertices of a room have been merged, the room will need to
+                    // either be split in two, or some HalfEdges will need to be removed
+                    // if the split would lead to a degenerate room.
 
-                    _halfEdgesMutable.SetSharedComponentFilter(new WithinLevel(level));
+                    _halfEdgesMutable.SetSharedComponentFilter(withinLevel);
 
                     var halfEdges = _halfEdgesMutable.ToEntityArray(Allocator.TempJob);
+                    var verticesToRemove = new TempEntitySet(SetAccess.Enumerate);
 
-                    foreach (var entity in halfEdges)
+                    foreach (var entBeforeFirst in halfEdges)
                     {
-                        var halfEdge = getHalfEdge[entity];
+                        var heBeforeFirst = getHalfEdge[entBeforeFirst];
 
-                        if (halfEdge.Vertex == Entity.Null)
+                        if (heBeforeFirst.Next == Entity.Null)
                         {
                             // Already marked this HalfEdge as degenerate
                             continue;
                         }
 
-                        var next = getHalfEdge[halfEdge.Next];
-                        var roomEntity = halfEdge.Room;
+                        var oldRoom = heBeforeFirst.Room;
 
-                        // Keep moving halfEdge.Next along until it doesn't
-                        // share its Vertex with halfEdge, or until we discover
-                        // halfEdge is degenerate too
+                        var entFirst = heBeforeFirst.Next;
+                        var heFirst = getHalfEdge[entFirst];
 
-                        while (next.Vertex == halfEdge.Vertex)
+                        var entPrev = entFirst;
+                        var hePrev = heFirst;
+
+                        var hasSplit = false;
+
+                        // Find split point
+
+                        var newRoomCount = 0;
+
+                        while (hePrev.Next != entFirst)
                         {
-                            getHalfEdge[halfEdge.Next] = default;
-                            PostUpdateCommands.DestroyEntity(halfEdge.Next);
+                            ++newRoomCount;
 
-                            if (halfEdge.Next == entity)
+                            var entNext = hePrev.Next;
+                            var heNext = getHalfEdge[entNext];
+
+                            if (heNext.Vertex == heFirst.Vertex)
                             {
+                                // Room has been split!
+
+                                hePrev.Next = entFirst;
+                                heBeforeFirst.Next = entNext;
+
+                                getHalfEdge[entPrev] = hePrev;
+                                getHalfEdge[entBeforeFirst] = heBeforeFirst;
+
+                                hasSplit = true;
+
                                 break;
                             }
 
-                            halfEdge.Next = next.Next;
-
-                            next = getHalfEdge[next.Next];
+                            entPrev = entNext;
+                            hePrev = heNext;
                         }
 
-                        if (halfEdge.Vertex == Entity.Null)
+                        if (!hasSplit)
                         {
-                            // The whole room was degenerate!
-                            PostUpdateCommands.DestroyEntity(roomEntity);
+                            continue;
                         }
 
-                        getHalfEdge[entity] = halfEdge;
+                        var oldRoomCount = getRoom[oldRoom].HalfEdgeCount - newRoomCount;
+
+                        getRoom[oldRoom] = new Room
+                        {
+                            HalfEdgeCount = oldRoomCount
+                        };
+
+                        var oldRoomHalfEdge = entBeforeFirst;
+                        var newRoomHalfEdge = entFirst;
+
+                        if (oldRoomCount < 3 && newRoomCount < 3)
+                        {
+                            // This whole room is degenerate!
+
+                            RemoveHalfEdgesInLoop(oldRoomHalfEdge, verticesToRemove, getHalfEdge);
+                            RemoveHalfEdgesInLoop(newRoomHalfEdge, verticesToRemove, getHalfEdge);
+
+                            PostUpdateCommands.DestroyEntity(oldRoom);
+                        }
+                        else if (oldRoomCount < 3)
+                        {
+                            RemoveHalfEdgesInLoop(oldRoomHalfEdge, verticesToRemove, getHalfEdge);
+                        }
+                        else if (newRoomCount < 3)
+                        {
+                            RemoveHalfEdgesInLoop(newRoomHalfEdge, verticesToRemove, getHalfEdge);
+                        }
+                        else
+                        {
+                            // Need to create a new room
+
+                            var newRoom = PostUpdateCommands.CopyRoom(heFirst.Room);
+                            var smallestRoomHalfEdge = newRoomCount < oldRoomCount ? newRoomHalfEdge : oldRoomHalfEdge;
+
+                            SetRoomInEdgeLoop(smallestRoomHalfEdge, newRoom, getHalfEdge);
+                        }
+                    }
+
+                    // Find out which vertices are still referenced
+
+                    foreach (var entity in halfEdges)
+                    {
+                        var halfEdge = getHalfEdge[entity];
+
+                        verticesToRemove.Remove(halfEdge.Vertex);
                     }
 
                     halfEdges.Dispose();
+
+                    // Destroy unreferenced vertices
+
+                    foreach (var vertex in verticesToRemove)
+                    {
+                        PostUpdateCommands.DestroyEntity(vertex);
+                    }
+
+                    verticesToRemove.Dispose();
                 });
         }
     }

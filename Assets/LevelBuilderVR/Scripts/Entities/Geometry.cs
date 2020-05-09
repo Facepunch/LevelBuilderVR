@@ -111,6 +111,21 @@ namespace LevelBuilderVR.Entities
             em.SetComponentData(entity, new Identifier(Guid.NewGuid()));
         }
 
+        private static void AssignNewIdentifier(this EntityCommandBuffer cmb, Entity entity)
+        {
+            cmb.SetComponent(entity, new Identifier(Guid.NewGuid()));
+        }
+
+        public static void SetWithinLevel(this EntityManager em, Entity entity, Entity level)
+        {
+            em.SetSharedComponentData(entity, em.GetWithinLevel(level));
+        }
+
+        public static WithinLevel GetWithinLevel(this EntityManager em, Entity level)
+        {
+            return new WithinLevel(em.GetComponentData<Identifier>(level));
+        }
+
         public static Entity CreateLevel(this EntityManager em, Guid? guid = null)
         {
             var level = em.CreateEntity(_sLevelArchetype);
@@ -134,7 +149,7 @@ namespace LevelBuilderVR.Entities
                 Value = float4x4.identity
             });
 
-            em.SetSharedComponentData(level, new WithinLevel(level));
+            em.SetWithinLevel(level, level);
 
             return level;
         }
@@ -152,7 +167,7 @@ namespace LevelBuilderVR.Entities
                 em.SetComponentData(room, new Identifier(guid.Value));
             }
 
-            em.SetSharedComponentData(room, new WithinLevel(level));
+            em.SetWithinLevel(room, level);
 
             if (floor.HasValue)
             {
@@ -170,8 +185,13 @@ namespace LevelBuilderVR.Entities
                 });
             }
 
-            // Rendering
+            em.SetupRoomRendering(room);
 
+            return room;
+        }
+
+        public static void SetupRoomRendering(this EntityManager em, Entity room)
+        {
             em.SetComponentData(room, new LocalToWorld
             {
                 Value = float4x4.identity
@@ -193,6 +213,14 @@ namespace LevelBuilderVR.Entities
             });
 
             em.AddComponent<DirtyMesh>(room);
+        }
+
+        public static Entity CopyRoom(this EntityCommandBuffer cmb, Entity otherRoom)
+        {
+            var room = cmb.CreateEntity(_sRoomArchetype);
+
+            cmb.AssignNewIdentifier(room);
+            cmb.AddComponent(room, new CopyRoom { Room = otherRoom });
 
             return room;
         }
@@ -257,7 +285,7 @@ namespace LevelBuilderVR.Entities
                 em.SetComponentData(vertex, new Identifier(guid.Value));
             }
 
-            em.SetSharedComponentData(vertex, new WithinLevel(level));
+            em.SetWithinLevel(vertex, level);
 
             em.SetComponentData(vertex, new Vertex
             {
@@ -333,7 +361,7 @@ namespace LevelBuilderVR.Entities
 
             var closestDist2 = float.PositiveInfinity;
 
-            _sVerticesQuery.SetSharedComponentFilter(new WithinLevel(level));
+            _sVerticesQuery.SetSharedComponentFilter(em.GetWithinLevel(level));
             using (var entities = _sVerticesQuery.ToEntityArray(Allocator.TempJob))
             {
                 foreach (var entity in entities)
@@ -368,7 +396,7 @@ namespace LevelBuilderVR.Entities
             var closestDist2 = float.PositiveInfinity;
             var closestV = 0f;
 
-            _sHalfEdgesQuery.SetSharedComponentFilter(new WithinLevel(level));
+            _sHalfEdgesQuery.SetSharedComponentFilter(em.GetWithinLevel(level));
             using (var entities = _sHalfEdgesQuery.ToEntityArray(Allocator.TempJob))
             {
                 foreach (var entity in entities)
@@ -458,15 +486,17 @@ namespace LevelBuilderVR.Entities
         {
             outEntities.Clear();
 
+            var withinLevel = em.GetWithinLevel(level);
+
             // Get all vertices
 
-            _sVerticesQuery.SetSharedComponentFilter(new WithinLevel(level));
+            _sVerticesQuery.SetSharedComponentFilter(withinLevel);
 
             outEntities.AddRange(_sVerticesQuery);
 
             // Remove vertices from vertexSet that are referenced
 
-            _sHalfEdgesQuery.SetSharedComponentFilter(new WithinLevel(level));
+            _sHalfEdgesQuery.SetSharedComponentFilter(withinLevel);
 
             var halfEdges = _sHalfEdgesQuery.ToComponentDataArray<HalfEdge>(Allocator.TempJob);
 
@@ -519,9 +549,11 @@ namespace LevelBuilderVR.Entities
             var halfEdgesObj = new JObject();
             var verticesObj = new JObject();
 
-            _sRoomsQuery.SetSharedComponentFilter(new WithinLevel(level));
-            _sHalfEdgesQuery.SetSharedComponentFilter(new WithinLevel(level));
-            _sVerticesQuery.SetSharedComponentFilter(new WithinLevel(level));
+            var withinLevel = em.GetWithinLevel(level);
+
+            _sRoomsQuery.SetSharedComponentFilter(withinLevel);
+            _sHalfEdgesQuery.SetSharedComponentFilter(withinLevel);
+            _sVerticesQuery.SetSharedComponentFilter(withinLevel);
 
             var rooms = _sRoomsQuery.ToEntityArray(Allocator.TempJob);
 

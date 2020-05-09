@@ -7,7 +7,7 @@ namespace LevelBuilderVR.Systems
     /// Find all <see cref="Vertex"/> entities with <see cref="DirtyMesh"/>,
     /// remove it, and apply it to the associated <see cref="Room"/> entities.
     /// </summary>
-    [UpdateAfter(typeof(VertexMergeSystem))]
+    [UpdateAfter(typeof(CopyRoomSystem))]
     public class DirtyVertexSystem : ComponentSystem
     {
         protected override void OnUpdate()
