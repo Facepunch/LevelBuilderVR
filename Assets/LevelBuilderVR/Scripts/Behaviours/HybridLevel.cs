@@ -45,6 +45,8 @@ namespace LevelBuilderVR.Behaviours
 
             SetDragOffset(Vector3.zero);
 
+            GridGuide.enabled = false;
+
             if (!Load(FilePath))
             {
                 Level = World.DefaultGameObjectInjectionWorld.EntityManager.CreateLevelTemplate(new float3(8f, 3f, 12f));
