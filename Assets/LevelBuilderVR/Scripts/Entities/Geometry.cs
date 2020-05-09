@@ -12,6 +12,7 @@ using UnityEngine.Rendering;
 using Valve.Newtonsoft.Json;
 using Valve.Newtonsoft.Json.Linq;
 using Object = UnityEngine.Object;
+using Random = UnityEngine.Random;
 
 namespace LevelBuilderVR.Entities
 { 
@@ -177,13 +178,16 @@ namespace LevelBuilderVR.Entities
             });
 
             var mesh = new Mesh();
+            var material = Object.Instantiate(HybridLevel.Material);
+
+            material.color = Color.HSVToRGB(Random.value, 0.125f, 1f);
 
             mesh.MarkDynamic();
 
             em.SetSharedComponentData(room, new RenderMesh
             {
                 mesh = mesh,
-                material = HybridLevel.Material,
+                material = material,
                 castShadows = ShadowCastingMode.Off,
                 receiveShadows = true
             });
