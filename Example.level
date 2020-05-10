@@ -1,0 +1,887 @@
+{
+  "formatVersion": 1,
+  "level": {
+    "guid": "ba028769-3846-4549-9a50-5179dee232db",
+    "revision": 2
+  },
+  "rooms": {
+    "3691ec17-22b8-4d42-8878-7401652f0aa1": {
+      "floor": 0.75,
+      "ceiling": 2.5
+    },
+    "5d49b21b-8845-4439-be5c-1cfc455cebee": {
+      "floor": -0.5,
+      "ceiling": 3.0
+    },
+    "e6cae4e3-8bf8-4ba1-b5bb-74efb7bf8b22": {
+      "floor": 1.0,
+      "ceiling": 2.0
+    },
+    "1cd3e539-f73a-4832-985a-6ea15be5eb0b": {
+      "floor": 0.5,
+      "ceiling": 2.0
+    },
+    "910d1d22-19c8-4850-abff-83cabd76a974": {
+      "floor": 0.5,
+      "ceiling": 2.0
+    },
+    "79379dc1-a38d-442b-ab24-191e7dee0f7c": {
+      "floor": 0.0,
+      "ceiling": 2.5
+    },
+    "be9ae0a2-a4b3-461e-9cb4-73aa2d46f24c": {
+      "floor": 0.5,
+      "ceiling": 2.0
+    },
+    "7c274fc3-10c1-4d41-9257-8379877853ed": {
+      "floor": 0.5,
+      "ceiling": 2.0
+    },
+    "054d0f31-7b75-4a92-b550-d52dfcbafaf5": {
+      "floor": 0.5,
+      "ceiling": 2.0
+    },
+    "ea35bda0-ac11-4385-998d-5ca3d463cdd8": {
+      "floor": -0.5,
+      "ceiling": 2.0
+    },
+    "712eb157-59ba-465b-b75a-1ebc6c7ed24b": {
+      "floor": -0.25,
+      "ceiling": 3.0
+    },
+    "dc9bd26c-70ed-4e80-bb5a-35a8e682703f": {
+      "floor": 0.0,
+      "ceiling": 2.0
+    },
+    "fc20662b-c938-452f-be2d-1ca175c00ebf": {
+      "floor": -0.5,
+      "ceiling": 3.0
+    }
+  },
+  "halfEdges": {
+    "73620069-f3dd-4546-9199-bea085fa52e8": {
+      "room": "3691ec17-22b8-4d42-8878-7401652f0aa1",
+      "vertex": "5b0ad9eb-d11f-4113-9c98-6476297002b1",
+      "next": "54f1eb09-8b19-4f45-880a-59400cb56a71",
+      "backFace": "75119db2-0fc8-4ec6-8264-6a419d5dfe41"
+    },
+    "50a26a2f-38b7-41a0-b3d4-3658063e2a69": {
+      "room": "79379dc1-a38d-442b-ab24-191e7dee0f7c",
+      "vertex": "646e3ca2-2b85-4de0-93cb-3fbda54c1171",
+      "next": "70965be5-0284-4783-922c-16232bf58151",
+      "backFace": null
+    },
+    "4cc167fe-1817-4b50-8c83-bb020ea5e766": {
+      "room": "79379dc1-a38d-442b-ab24-191e7dee0f7c",
+      "vertex": "c8d172d1-d45a-421e-85d1-13603170a128",
+      "next": "5198ced7-fdd3-4b11-985f-ae22013eb8f6",
+      "backFace": null
+    },
+    "52710f1b-4815-4535-a5e7-fc7a1f2f03bb": {
+      "room": "79379dc1-a38d-442b-ab24-191e7dee0f7c",
+      "vertex": "2dc1c4f2-3dfb-4ef7-80b0-812ed9701b70",
+      "next": "2a38922e-d6f3-4973-81ce-029dbad785e2",
+      "backFace": null
+    },
+    "9f82b201-f7d8-475b-a47e-8f49d9384ed2": {
+      "room": "79379dc1-a38d-442b-ab24-191e7dee0f7c",
+      "vertex": "55306864-856b-4c0d-bc3d-6803ad9e4627",
+      "next": "9fa801f4-bb62-44ab-837e-66856e2f4efa",
+      "backFace": null
+    },
+    "2a38922e-d6f3-4973-81ce-029dbad785e2": {
+      "room": "79379dc1-a38d-442b-ab24-191e7dee0f7c",
+      "vertex": "5b0ad9eb-d11f-4113-9c98-6476297002b1",
+      "next": "799e4c8f-6616-4dcd-9497-12efabae4d2f",
+      "backFace": "680b4b07-2b27-462a-a982-5b213c0314cf"
+    },
+    "80083e28-d9f1-4384-8002-532639ed7553": {
+      "room": "79379dc1-a38d-442b-ab24-191e7dee0f7c",
+      "vertex": "82fac7f6-e891-4f77-8671-47160800e73c",
+      "next": "9f82b201-f7d8-475b-a47e-8f49d9384ed2",
+      "backFace": null
+    },
+    "5198ced7-fdd3-4b11-985f-ae22013eb8f6": {
+      "room": "79379dc1-a38d-442b-ab24-191e7dee0f7c",
+      "vertex": "ac6d3ab2-8bb9-42e6-bbbd-e8cd4e171d60",
+      "next": "98b3181a-0311-41c9-96f8-60941d5854c1",
+      "backFace": "4792a326-c1b0-4ae8-a45c-f774a89799d4"
+    },
+    "3365cecd-4607-49f4-9329-671aabe5d717": {
+      "room": "dc9bd26c-70ed-4e80-bb5a-35a8e682703f",
+      "vertex": "ac6d3ab2-8bb9-42e6-bbbd-e8cd4e171d60",
+      "next": "9b923a06-d54a-41ee-8147-2520de26d851",
+      "backFace": null
+    },
+    "9b923a06-d54a-41ee-8147-2520de26d851": {
+      "room": "dc9bd26c-70ed-4e80-bb5a-35a8e682703f",
+      "vertex": "5eaff03c-2cf5-449b-9340-359e5151175f",
+      "next": "a59efc96-505b-428d-a34a-70c764581eec",
+      "backFace": "04321b0c-0cb8-4b0f-8a04-84506f680a1e"
+    },
+    "2e78010e-67db-4562-b38d-fbfef257adda": {
+      "room": "712eb157-59ba-465b-b75a-1ebc6c7ed24b",
+      "vertex": "5eaff03c-2cf5-449b-9340-359e5151175f",
+      "next": "fe61d0b3-f713-4f42-94cb-9a6b2d3a2e8a",
+      "backFace": null
+    },
+    "98b3181a-0311-41c9-96f8-60941d5854c1": {
+      "room": "79379dc1-a38d-442b-ab24-191e7dee0f7c",
+      "vertex": "4a0261fa-bc07-429d-8014-2268f9f3ed1f",
+      "next": "80083e28-d9f1-4384-8002-532639ed7553",
+      "backFace": null
+    },
+    "4792a326-c1b0-4ae8-a45c-f774a89799d4": {
+      "room": "dc9bd26c-70ed-4e80-bb5a-35a8e682703f",
+      "vertex": "4a0261fa-bc07-429d-8014-2268f9f3ed1f",
+      "next": "3365cecd-4607-49f4-9329-671aabe5d717",
+      "backFace": "5198ced7-fdd3-4b11-985f-ae22013eb8f6"
+    },
+    "216f88fa-6c16-4343-9823-078525125e37": {
+      "room": "fc20662b-c938-452f-be2d-1ca175c00ebf",
+      "vertex": "f8db4875-9f72-4b20-8ba8-b8c2d0dbbdcc",
+      "next": "d6090b5a-46f8-4beb-ac7b-20cfdef649a2",
+      "backFace": null
+    },
+    "d6090b5a-46f8-4beb-ac7b-20cfdef649a2": {
+      "room": "fc20662b-c938-452f-be2d-1ca175c00ebf",
+      "vertex": "e5937269-a7cc-4573-90c3-01edf2bc2b2c",
+      "next": "5d7df6c9-8f7a-45fe-a1b6-7d86fc665a18",
+      "backFace": null
+    },
+    "a59efc96-505b-428d-a34a-70c764581eec": {
+      "room": "dc9bd26c-70ed-4e80-bb5a-35a8e682703f",
+      "vertex": "2c9ea4f5-f4e0-41f1-9e0c-6fb1a7389eb4",
+      "next": "4792a326-c1b0-4ae8-a45c-f774a89799d4",
+      "backFace": null
+    },
+    "04321b0c-0cb8-4b0f-8a04-84506f680a1e": {
+      "room": "712eb157-59ba-465b-b75a-1ebc6c7ed24b",
+      "vertex": "2c9ea4f5-f4e0-41f1-9e0c-6fb1a7389eb4",
+      "next": "2e78010e-67db-4562-b38d-fbfef257adda",
+      "backFace": "9b923a06-d54a-41ee-8147-2520de26d851"
+    },
+    "f08fe699-6628-4d29-8fea-764e1007af8e": {
+      "room": "fc20662b-c938-452f-be2d-1ca175c00ebf",
+      "vertex": "e989c787-a51b-4e0e-a51c-c93c57905358",
+      "next": "1595525d-a1da-47db-8e20-baacd37ed8eb",
+      "backFace": null
+    },
+    "d447e4dd-4a6c-4638-b971-7f970fd1871b": {
+      "room": "fc20662b-c938-452f-be2d-1ca175c00ebf",
+      "vertex": "8fba74ad-161b-4b25-9307-335686841a7b",
+      "next": "4ab61500-db6f-435f-9463-fcbd6e80f719",
+      "backFace": null
+    },
+    "e8594780-574c-45c3-ae50-86ccd634f3b7": {
+      "room": "fc20662b-c938-452f-be2d-1ca175c00ebf",
+      "vertex": "ab4c0d7e-0236-46fd-bfd7-dc9354bb4d80",
+      "next": "25747393-cedc-4100-bffa-fc734b4abc4e",
+      "backFace": null
+    },
+    "1077657a-0762-410c-bb33-3f3e8c5bb393": {
+      "room": "fc20662b-c938-452f-be2d-1ca175c00ebf",
+      "vertex": "48ab6c7b-9261-422c-8580-869b8f675c66",
+      "next": "d447e4dd-4a6c-4638-b971-7f970fd1871b",
+      "backFace": null
+    },
+    "0e03324d-fdb3-4a04-a0c5-bd031be533ed": {
+      "room": "054d0f31-7b75-4a92-b550-d52dfcbafaf5",
+      "vertex": "08963774-27c9-4ced-8307-e1c3d40c2abd",
+      "next": "66bf0652-82b5-47bd-88f3-8fcffb4907cb",
+      "backFace": "25747393-cedc-4100-bffa-fc734b4abc4e"
+    },
+    "670c60e2-a739-4529-8340-45c3a5d0db53": {
+      "room": "79379dc1-a38d-442b-ab24-191e7dee0f7c",
+      "vertex": "a8ec637c-eceb-4fc2-946c-92591fb97cff",
+      "next": "52710f1b-4815-4535-a5e7-fc7a1f2f03bb",
+      "backFace": null
+    },
+    "97e6055e-e1c6-4d41-9977-244ebc2eff07": {
+      "room": "fc20662b-c938-452f-be2d-1ca175c00ebf",
+      "vertex": "08963774-27c9-4ced-8307-e1c3d40c2abd",
+      "next": "1077657a-0762-410c-bb33-3f3e8c5bb393",
+      "backFace": null
+    },
+    "25747393-cedc-4100-bffa-fc734b4abc4e": {
+      "room": "fc20662b-c938-452f-be2d-1ca175c00ebf",
+      "vertex": "042dd771-e040-4c51-a31f-e577f710f8d6",
+      "next": "97e6055e-e1c6-4d41-9977-244ebc2eff07",
+      "backFace": "0e03324d-fdb3-4a04-a0c5-bd031be533ed"
+    },
+    "3228c7af-1076-4f41-9a04-2768bbc4de55": {
+      "room": "054d0f31-7b75-4a92-b550-d52dfcbafaf5",
+      "vertex": "a8ec637c-eceb-4fc2-946c-92591fb97cff",
+      "next": "0b253ef4-d6ed-4fe0-81dc-6a05c75d344e",
+      "backFace": "9fa801f4-bb62-44ab-837e-66856e2f4efa"
+    },
+    "66bf0652-82b5-47bd-88f3-8fcffb4907cb": {
+      "room": "054d0f31-7b75-4a92-b550-d52dfcbafaf5",
+      "vertex": "042dd771-e040-4c51-a31f-e577f710f8d6",
+      "next": "3228c7af-1076-4f41-9a04-2768bbc4de55",
+      "backFace": null
+    },
+    "9fa801f4-bb62-44ab-837e-66856e2f4efa": {
+      "room": "79379dc1-a38d-442b-ab24-191e7dee0f7c",
+      "vertex": "8c727a47-2c6b-4534-a756-3c732fc2e895",
+      "next": "670c60e2-a739-4529-8340-45c3a5d0db53",
+      "backFace": "3228c7af-1076-4f41-9a04-2768bbc4de55"
+    },
+    "0b253ef4-d6ed-4fe0-81dc-6a05c75d344e": {
+      "room": "054d0f31-7b75-4a92-b550-d52dfcbafaf5",
+      "vertex": "8c727a47-2c6b-4534-a756-3c732fc2e895",
+      "next": "0e03324d-fdb3-4a04-a0c5-bd031be533ed",
+      "backFace": null
+    },
+    "b5322c45-42b9-422d-85f8-c93019bc0e30": {
+      "room": "3691ec17-22b8-4d42-8878-7401652f0aa1",
+      "vertex": "1b06c737-640d-43da-81b3-35768d1e3530",
+      "next": "581e5a56-2cf4-4543-92ae-e2197a1d950b",
+      "backFace": "24c68f0a-dbc7-475c-a3f5-52b3da3ec858"
+    },
+    "29ff8215-c832-4113-b956-97b674bbea3c": {
+      "room": "3691ec17-22b8-4d42-8878-7401652f0aa1",
+      "vertex": "6b561508-e3a2-4f8a-8b9e-3200dad446b9",
+      "next": "4d843b24-d8ad-4cb7-aa7e-de3d2c6a4657",
+      "backFace": null
+    },
+    "6bfd5720-dec5-4857-8676-9739d21a0037": {
+      "room": "79379dc1-a38d-442b-ab24-191e7dee0f7c",
+      "vertex": "3127d010-96b5-44e7-9f8d-f81fdc829616",
+      "next": "8b1f82aa-1758-4923-99cd-e6259fea7dc2",
+      "backFace": null
+    },
+    "4d843b24-d8ad-4cb7-aa7e-de3d2c6a4657": {
+      "room": "3691ec17-22b8-4d42-8878-7401652f0aa1",
+      "vertex": "3127d010-96b5-44e7-9f8d-f81fdc829616",
+      "next": "b5322c45-42b9-422d-85f8-c93019bc0e30",
+      "backFace": "70a177f2-2ec2-4ba5-8eb2-365b75671bf7"
+    },
+    "70a177f2-2ec2-4ba5-8eb2-365b75671bf7": {
+      "room": "79379dc1-a38d-442b-ab24-191e7dee0f7c",
+      "vertex": "1b06c737-640d-43da-81b3-35768d1e3530",
+      "next": "6bfd5720-dec5-4857-8676-9739d21a0037",
+      "backFace": "4d843b24-d8ad-4cb7-aa7e-de3d2c6a4657"
+    },
+    "24c68f0a-dbc7-475c-a3f5-52b3da3ec858": {
+      "room": "79379dc1-a38d-442b-ab24-191e7dee0f7c",
+      "vertex": "e313a844-ebcf-48ca-aa4e-bf12ce160ead",
+      "next": "70a177f2-2ec2-4ba5-8eb2-365b75671bf7",
+      "backFace": "b5322c45-42b9-422d-85f8-c93019bc0e30"
+    },
+    "581e5a56-2cf4-4543-92ae-e2197a1d950b": {
+      "room": "3691ec17-22b8-4d42-8878-7401652f0aa1",
+      "vertex": "e313a844-ebcf-48ca-aa4e-bf12ce160ead",
+      "next": "680b4b07-2b27-462a-a982-5b213c0314cf",
+      "backFace": "799e4c8f-6616-4dcd-9497-12efabae4d2f"
+    },
+    "799e4c8f-6616-4dcd-9497-12efabae4d2f": {
+      "room": "79379dc1-a38d-442b-ab24-191e7dee0f7c",
+      "vertex": "b12384d1-81cc-4275-88e1-f67169367757",
+      "next": "24c68f0a-dbc7-475c-a3f5-52b3da3ec858",
+      "backFace": "581e5a56-2cf4-4543-92ae-e2197a1d950b"
+    },
+    "680b4b07-2b27-462a-a982-5b213c0314cf": {
+      "room": "3691ec17-22b8-4d42-8878-7401652f0aa1",
+      "vertex": "b12384d1-81cc-4275-88e1-f67169367757",
+      "next": "73620069-f3dd-4546-9199-bea085fa52e8",
+      "backFace": "2a38922e-d6f3-4973-81ce-029dbad785e2"
+    },
+    "aa5e0212-656b-4e07-88d0-6b283e632b0c": {
+      "room": "910d1d22-19c8-4850-abff-83cabd76a974",
+      "vertex": "72620aaa-16b1-4e9b-8a8f-c439084d544f",
+      "next": "0766c600-21ea-4b3e-9880-caa165e1ea32",
+      "backFace": null
+    },
+    "d61e88b6-937f-412a-aa9c-1f6b240dfbcb": {
+      "room": "79379dc1-a38d-442b-ab24-191e7dee0f7c",
+      "vertex": "d8207226-e74c-4d38-88a8-1601cc963126",
+      "next": "8604cdea-a6a1-44a4-bbc7-0281fb40bb9e",
+      "backFace": "105a217d-ce2a-412f-88ca-7f7db5f74a26"
+    },
+    "8b1f82aa-1758-4923-99cd-e6259fea7dc2": {
+      "room": "79379dc1-a38d-442b-ab24-191e7dee0f7c",
+      "vertex": "72620aaa-16b1-4e9b-8a8f-c439084d544f",
+      "next": "34115ee0-44f8-4fad-8283-f334fb433130",
+      "backFace": "831e6f73-af4a-42bb-8f79-b0ec8d7244b5"
+    },
+    "0fb87a77-a8a4-4601-9c48-247c3184f90c": {
+      "room": "1cd3e539-f73a-4832-985a-6ea15be5eb0b",
+      "vertex": "d8207226-e74c-4d38-88a8-1601cc963126",
+      "next": "2c81558c-05d4-4af6-9ec3-e03ee51c2bcf",
+      "backFace": null
+    },
+    "0766c600-21ea-4b3e-9880-caa165e1ea32": {
+      "room": "910d1d22-19c8-4850-abff-83cabd76a974",
+      "vertex": "c4256044-e5f7-4510-a7b0-790e46abcc58",
+      "next": "3e409157-4f3b-414d-9a3f-269eab753339",
+      "backFace": null
+    },
+    "3e409157-4f3b-414d-9a3f-269eab753339": {
+      "room": "910d1d22-19c8-4850-abff-83cabd76a974",
+      "vertex": "ab7bc452-737d-4861-8389-8c74be924891",
+      "next": "831e6f73-af4a-42bb-8f79-b0ec8d7244b5",
+      "backFace": null
+    },
+    "831e6f73-af4a-42bb-8f79-b0ec8d7244b5": {
+      "room": "910d1d22-19c8-4850-abff-83cabd76a974",
+      "vertex": "0f314588-7770-4924-b171-b8a4c26277d1",
+      "next": "aa5e0212-656b-4e07-88d0-6b283e632b0c",
+      "backFace": "8b1f82aa-1758-4923-99cd-e6259fea7dc2"
+    },
+    "34115ee0-44f8-4fad-8283-f334fb433130": {
+      "room": "79379dc1-a38d-442b-ab24-191e7dee0f7c",
+      "vertex": "0f314588-7770-4924-b171-b8a4c26277d1",
+      "next": "d61e88b6-937f-412a-aa9c-1f6b240dfbcb",
+      "backFace": null
+    },
+    "2c81558c-05d4-4af6-9ec3-e03ee51c2bcf": {
+      "room": "1cd3e539-f73a-4832-985a-6ea15be5eb0b",
+      "vertex": "c1ea6e61-280a-4406-a178-8fc58c3ebe3a",
+      "next": "46652d1b-e69f-4e1d-a3be-1c1132b1ac18",
+      "backFace": null
+    },
+    "46652d1b-e69f-4e1d-a3be-1c1132b1ac18": {
+      "room": "1cd3e539-f73a-4832-985a-6ea15be5eb0b",
+      "vertex": "1135630e-0294-4863-95ca-7d7c21d4c01b",
+      "next": "105a217d-ce2a-412f-88ca-7f7db5f74a26",
+      "backFace": null
+    },
+    "8604cdea-a6a1-44a4-bbc7-0281fb40bb9e": {
+      "room": "79379dc1-a38d-442b-ab24-191e7dee0f7c",
+      "vertex": "c54b4a8b-bfcb-4ed7-ba31-061809aa64c0",
+      "next": "50a26a2f-38b7-41a0-b3d4-3658063e2a69",
+      "backFace": null
+    },
+    "105a217d-ce2a-412f-88ca-7f7db5f74a26": {
+      "room": "1cd3e539-f73a-4832-985a-6ea15be5eb0b",
+      "vertex": "c54b4a8b-bfcb-4ed7-ba31-061809aa64c0",
+      "next": "0fb87a77-a8a4-4601-9c48-247c3184f90c",
+      "backFace": "d61e88b6-937f-412a-aa9c-1f6b240dfbcb"
+    },
+    "5d7df6c9-8f7a-45fe-a1b6-7d86fc665a18": {
+      "room": "fc20662b-c938-452f-be2d-1ca175c00ebf",
+      "vertex": "8e7f203b-826c-42fd-822b-6bbbd7308ae7",
+      "next": "df1d3efd-c6ea-4364-b6db-639c65e6399c",
+      "backFace": "de2a3c43-1748-460c-bb23-770fe0846bac"
+    },
+    "cbfc7071-310c-46ef-bee9-983e7c015019": {
+      "room": "ea35bda0-ac11-4385-998d-5ca3d463cdd8",
+      "vertex": "8e7f203b-826c-42fd-822b-6bbbd7308ae7",
+      "next": "4a949202-b091-457b-bb2e-97aad967df4d",
+      "backFace": null
+    },
+    "ebc4e69f-bacc-497b-a87b-9e73c6efcdb1": {
+      "room": "ea35bda0-ac11-4385-998d-5ca3d463cdd8",
+      "vertex": "eb30c9a1-27be-4be7-a44c-73e8a1cb3535",
+      "next": "de2a3c43-1748-460c-bb23-770fe0846bac",
+      "backFace": null
+    },
+    "8b712809-7733-4014-b221-7c900339cda0": {
+      "room": "5d49b21b-8845-4439-be5c-1cfc455cebee",
+      "vertex": "eb30c9a1-27be-4be7-a44c-73e8a1cb3535",
+      "next": "430ac2e6-afa5-4953-8307-c0782c7c5955",
+      "backFace": "4a949202-b091-457b-bb2e-97aad967df4d"
+    },
+    "df1d3efd-c6ea-4364-b6db-639c65e6399c": {
+      "room": "fc20662b-c938-452f-be2d-1ca175c00ebf",
+      "vertex": "ae4020f2-f0ff-4a37-a264-aa70b38cb475",
+      "next": "e8594780-574c-45c3-ae50-86ccd634f3b7",
+      "backFace": null
+    },
+    "de2a3c43-1748-460c-bb23-770fe0846bac": {
+      "room": "ea35bda0-ac11-4385-998d-5ca3d463cdd8",
+      "vertex": "ae4020f2-f0ff-4a37-a264-aa70b38cb475",
+      "next": "cbfc7071-310c-46ef-bee9-983e7c015019",
+      "backFace": "5d7df6c9-8f7a-45fe-a1b6-7d86fc665a18"
+    },
+    "33f414f9-e39b-4b9b-ada9-a2ddf1358783": {
+      "room": "5d49b21b-8845-4439-be5c-1cfc455cebee",
+      "vertex": "6f7f6ad2-46c6-48a1-a765-e7ef381ba7fa",
+      "next": "6330d228-c1df-4839-ad6d-f9b7e11306fb",
+      "backFace": null
+    },
+    "14b85887-ce89-4df2-b4f3-2ec3e7c5d9a1": {
+      "room": "5d49b21b-8845-4439-be5c-1cfc455cebee",
+      "vertex": "91084d8e-e166-4f1b-b678-80c30026fc62",
+      "next": "3e8b71e0-ce23-4a20-a0d3-56c5bdb1c674",
+      "backFace": null
+    },
+    "430ac2e6-afa5-4953-8307-c0782c7c5955": {
+      "room": "5d49b21b-8845-4439-be5c-1cfc455cebee",
+      "vertex": "e41e2689-721b-4e68-b825-57940003eb9f",
+      "next": "bf39e87f-9867-4763-97a1-a4966e970798",
+      "backFace": null
+    },
+    "4a949202-b091-457b-bb2e-97aad967df4d": {
+      "room": "ea35bda0-ac11-4385-998d-5ca3d463cdd8",
+      "vertex": "e41e2689-721b-4e68-b825-57940003eb9f",
+      "next": "ebc4e69f-bacc-497b-a87b-9e73c6efcdb1",
+      "backFace": "8b712809-7733-4014-b221-7c900339cda0"
+    },
+    "bf39e87f-9867-4763-97a1-a4966e970798": {
+      "room": "5d49b21b-8845-4439-be5c-1cfc455cebee",
+      "vertex": "720453c4-224d-42ec-b5dd-9b47e251d093",
+      "next": "14b85887-ce89-4df2-b4f3-2ec3e7c5d9a1",
+      "backFace": null
+    },
+    "6330d228-c1df-4839-ad6d-f9b7e11306fb": {
+      "room": "5d49b21b-8845-4439-be5c-1cfc455cebee",
+      "vertex": "0c0ccc32-d570-4654-bf81-7a620fc75598",
+      "next": "6c1c20f9-9650-4348-a14d-e21ef788ecd5",
+      "backFace": null
+    },
+    "3e8b71e0-ce23-4a20-a0d3-56c5bdb1c674": {
+      "room": "5d49b21b-8845-4439-be5c-1cfc455cebee",
+      "vertex": "6fac0003-bddc-4aca-9a1e-803a8bf5753c",
+      "next": "eba2e157-8ad8-4590-8b60-5b0d16573d8b",
+      "backFace": null
+    },
+    "eba2e157-8ad8-4590-8b60-5b0d16573d8b": {
+      "room": "5d49b21b-8845-4439-be5c-1cfc455cebee",
+      "vertex": "f7cf5780-9181-453d-a7ec-05afaf84ee58",
+      "next": "33f414f9-e39b-4b9b-ada9-a2ddf1358783",
+      "backFace": null
+    },
+    "54f1eb09-8b19-4f45-880a-59400cb56a71": {
+      "room": "3691ec17-22b8-4d42-8878-7401652f0aa1",
+      "vertex": "7fbc141f-a8d1-441f-b4ef-565bee23d8d3",
+      "next": "29ff8215-c832-4113-b956-97b674bbea3c",
+      "backFace": null
+    },
+    "465d2366-51ea-447f-99bb-84442d460b47": {
+      "room": "e6cae4e3-8bf8-4ba1-b5bb-74efb7bf8b22",
+      "vertex": "bb8d570f-b631-4afa-81b8-7bb6e00ea71d",
+      "next": "0326b387-1848-45d0-b1d2-9fb09a197ec9",
+      "backFace": "6c1c20f9-9650-4348-a14d-e21ef788ecd5"
+    },
+    "035653ec-d16c-4eac-bf5b-42b3ea74819c": {
+      "room": "5d49b21b-8845-4439-be5c-1cfc455cebee",
+      "vertex": "bb8d570f-b631-4afa-81b8-7bb6e00ea71d",
+      "next": "8b712809-7733-4014-b221-7c900339cda0",
+      "backFace": null
+    },
+    "a1e87ed6-86e4-4405-b53e-95e3747a33ae": {
+      "room": "e6cae4e3-8bf8-4ba1-b5bb-74efb7bf8b22",
+      "vertex": "5b0ad9eb-d11f-4113-9c98-6476297002b1",
+      "next": "465d2366-51ea-447f-99bb-84442d460b47",
+      "backFace": null
+    },
+    "75119db2-0fc8-4ec6-8264-6a419d5dfe41": {
+      "room": "e6cae4e3-8bf8-4ba1-b5bb-74efb7bf8b22",
+      "vertex": "7fbc141f-a8d1-441f-b4ef-565bee23d8d3",
+      "next": "a1e87ed6-86e4-4405-b53e-95e3747a33ae",
+      "backFace": "73620069-f3dd-4546-9199-bea085fa52e8"
+    },
+    "6c1c20f9-9650-4348-a14d-e21ef788ecd5": {
+      "room": "5d49b21b-8845-4439-be5c-1cfc455cebee",
+      "vertex": "f37ec2b9-9379-4e47-8bc5-326f59155ac8",
+      "next": "035653ec-d16c-4eac-bf5b-42b3ea74819c",
+      "backFace": "465d2366-51ea-447f-99bb-84442d460b47"
+    },
+    "0326b387-1848-45d0-b1d2-9fb09a197ec9": {
+      "room": "e6cae4e3-8bf8-4ba1-b5bb-74efb7bf8b22",
+      "vertex": "f37ec2b9-9379-4e47-8bc5-326f59155ac8",
+      "next": "75119db2-0fc8-4ec6-8264-6a419d5dfe41",
+      "backFace": null
+    },
+    "25571c0b-ee02-4124-8d98-a82b7715aaf7": {
+      "room": "fc20662b-c938-452f-be2d-1ca175c00ebf",
+      "vertex": "ac8a0867-c31d-4557-9b61-244a347fccfd",
+      "next": "216f88fa-6c16-4343-9823-078525125e37",
+      "backFace": null
+    },
+    "abeef10f-650b-4d35-9b63-c2cc95c043c3": {
+      "room": "fc20662b-c938-452f-be2d-1ca175c00ebf",
+      "vertex": "6f6c80e3-b900-4a22-92ae-67faaf40a0bc",
+      "next": "25571c0b-ee02-4124-8d98-a82b7715aaf7",
+      "backFace": null
+    },
+    "260627ec-7f00-45a4-91fa-e1191d24e735": {
+      "room": "be9ae0a2-a4b3-461e-9cb4-73aa2d46f24c",
+      "vertex": "a8caf9cb-842c-442e-a173-8f7150799d50",
+      "next": "1199529b-7129-4bf8-aaa2-5fd93caeb1f9",
+      "backFace": "70965be5-0284-4783-922c-16232bf58151"
+    },
+    "5ef2bc93-60d4-4547-a3aa-699ae026a9f2": {
+      "room": "fc20662b-c938-452f-be2d-1ca175c00ebf",
+      "vertex": "ec146758-a852-4a87-8b26-6f9abc7319f8",
+      "next": "abeef10f-650b-4d35-9b63-c2cc95c043c3",
+      "backFace": null
+    },
+    "ee42ee37-d666-4530-a5ec-211fab239492": {
+      "room": "79379dc1-a38d-442b-ab24-191e7dee0f7c",
+      "vertex": "5dd80b25-5959-443f-91de-51a5d0fe19b8",
+      "next": "4cc167fe-1817-4b50-8c83-bb020ea5e766",
+      "backFace": null
+    },
+    "1595525d-a1da-47db-8e20-baacd37ed8eb": {
+      "room": "fc20662b-c938-452f-be2d-1ca175c00ebf",
+      "vertex": "d16e7654-b833-496b-81b7-57dca0e2797e",
+      "next": "546cf473-385a-4e93-961b-63f138ab78a1",
+      "backFace": "cf55db2d-a7ca-4937-82c0-c2c287c6fec4"
+    },
+    "d0a5e6ec-8031-4651-bc71-84c228bccb86": {
+      "room": "79379dc1-a38d-442b-ab24-191e7dee0f7c",
+      "vertex": "a8caf9cb-842c-442e-a173-8f7150799d50",
+      "next": "6abe6b8d-0880-492d-a145-75fbdd2cf96a",
+      "backFace": null
+    },
+    "823a3e6d-4583-4d4c-ba2a-086b33c5d6b1": {
+      "room": "7c274fc3-10c1-4d41-9257-8379877853ed",
+      "vertex": "5dd80b25-5959-443f-91de-51a5d0fe19b8",
+      "next": "5c3bdce9-96a2-4980-9638-08821b77a77f",
+      "backFace": "6abe6b8d-0880-492d-a145-75fbdd2cf96a"
+    },
+    "20f097ac-37db-46d4-a8a7-7c5bacbdd4a6": {
+      "room": "fc20662b-c938-452f-be2d-1ca175c00ebf",
+      "vertex": "fd39906c-faf8-45af-92ee-88decb45810f",
+      "next": "5ef2bc93-60d4-4547-a3aa-699ae026a9f2",
+      "backFace": "7d9d13a1-fbb3-4e2a-b935-be275eda7a06"
+    },
+    "546cf473-385a-4e93-961b-63f138ab78a1": {
+      "room": "fc20662b-c938-452f-be2d-1ca175c00ebf",
+      "vertex": "36849a59-cb38-4f33-ac11-3d897fd777e6",
+      "next": "20f097ac-37db-46d4-a8a7-7c5bacbdd4a6",
+      "backFace": null
+    },
+    "7d9d13a1-fbb3-4e2a-b935-be275eda7a06": {
+      "room": "be9ae0a2-a4b3-461e-9cb4-73aa2d46f24c",
+      "vertex": "ec146758-a852-4a87-8b26-6f9abc7319f8",
+      "next": "363c9e01-23fb-4bd2-8d23-282347723004",
+      "backFace": "20f097ac-37db-46d4-a8a7-7c5bacbdd4a6"
+    },
+    "363c9e01-23fb-4bd2-8d23-282347723004": {
+      "room": "be9ae0a2-a4b3-461e-9cb4-73aa2d46f24c",
+      "vertex": "fd39906c-faf8-45af-92ee-88decb45810f",
+      "next": "260627ec-7f00-45a4-91fa-e1191d24e735",
+      "backFace": null
+    },
+    "cf55db2d-a7ca-4937-82c0-c2c287c6fec4": {
+      "room": "7c274fc3-10c1-4d41-9257-8379877853ed",
+      "vertex": "36849a59-cb38-4f33-ac11-3d897fd777e6",
+      "next": "c7ecab41-b922-4626-af04-655fca6ba901",
+      "backFace": "1595525d-a1da-47db-8e20-baacd37ed8eb"
+    },
+    "c7ecab41-b922-4626-af04-655fca6ba901": {
+      "room": "7c274fc3-10c1-4d41-9257-8379877853ed",
+      "vertex": "d16e7654-b833-496b-81b7-57dca0e2797e",
+      "next": "823a3e6d-4583-4d4c-ba2a-086b33c5d6b1",
+      "backFace": null
+    },
+    "70965be5-0284-4783-922c-16232bf58151": {
+      "room": "79379dc1-a38d-442b-ab24-191e7dee0f7c",
+      "vertex": "d7d9b92b-f753-486b-b92b-c267757ed589",
+      "next": "d0a5e6ec-8031-4651-bc71-84c228bccb86",
+      "backFace": "260627ec-7f00-45a4-91fa-e1191d24e735"
+    },
+    "1199529b-7129-4bf8-aaa2-5fd93caeb1f9": {
+      "room": "be9ae0a2-a4b3-461e-9cb4-73aa2d46f24c",
+      "vertex": "d7d9b92b-f753-486b-b92b-c267757ed589",
+      "next": "7d9d13a1-fbb3-4e2a-b935-be275eda7a06",
+      "backFace": null
+    },
+    "5c3bdce9-96a2-4980-9638-08821b77a77f": {
+      "room": "7c274fc3-10c1-4d41-9257-8379877853ed",
+      "vertex": "c242ff7c-b88d-4e79-8e33-62193f74f501",
+      "next": "cf55db2d-a7ca-4937-82c0-c2c287c6fec4",
+      "backFace": null
+    },
+    "6abe6b8d-0880-492d-a145-75fbdd2cf96a": {
+      "room": "79379dc1-a38d-442b-ab24-191e7dee0f7c",
+      "vertex": "c242ff7c-b88d-4e79-8e33-62193f74f501",
+      "next": "ee42ee37-d666-4530-a5ec-211fab239492",
+      "backFace": "823a3e6d-4583-4d4c-ba2a-086b33c5d6b1"
+    },
+    "4ab61500-db6f-435f-9463-fcbd6e80f719": {
+      "room": "fc20662b-c938-452f-be2d-1ca175c00ebf",
+      "vertex": "da45f7d7-8bc5-4228-bde2-e81d229ae395",
+      "next": "81bfce6b-ca9c-4895-b795-4d017c06ec20",
+      "backFace": "74d2f31e-26d2-4a06-9ecd-127ddb9d7f34"
+    },
+    "7d94d87e-e792-4e3c-ad6e-6d13dd24aee8": {
+      "room": "fc20662b-c938-452f-be2d-1ca175c00ebf",
+      "vertex": "a22547d5-ea65-42fe-8dd1-3ac9b06b23d6",
+      "next": "f08fe699-6628-4d29-8fea-764e1007af8e",
+      "backFace": null
+    },
+    "81bfce6b-ca9c-4895-b795-4d017c06ec20": {
+      "room": "fc20662b-c938-452f-be2d-1ca175c00ebf",
+      "vertex": "70aefe29-dc5a-48a5-8371-83e4c0b45156",
+      "next": "b66de0d0-9872-4468-9347-92e8c38a8cd1",
+      "backFace": "9a565b8a-e93c-41b3-9f24-ad64a7170286"
+    },
+    "9a565b8a-e93c-41b3-9f24-ad64a7170286": {
+      "room": "712eb157-59ba-465b-b75a-1ebc6c7ed24b",
+      "vertex": "da5dc857-f322-4ab2-86e0-429ab868e108",
+      "next": "74d2f31e-26d2-4a06-9ecd-127ddb9d7f34",
+      "backFace": "81bfce6b-ca9c-4895-b795-4d017c06ec20"
+    },
+    "b66de0d0-9872-4468-9347-92e8c38a8cd1": {
+      "room": "fc20662b-c938-452f-be2d-1ca175c00ebf",
+      "vertex": "da5dc857-f322-4ab2-86e0-429ab868e108",
+      "next": "7d94d87e-e792-4e3c-ad6e-6d13dd24aee8",
+      "backFace": "fe61d0b3-f713-4f42-94cb-9a6b2d3a2e8a"
+    },
+    "cb68bc41-b8b9-4766-8f48-60ee40679123": {
+      "room": "712eb157-59ba-465b-b75a-1ebc6c7ed24b",
+      "vertex": "da45f7d7-8bc5-4228-bde2-e81d229ae395",
+      "next": "04321b0c-0cb8-4b0f-8a04-84506f680a1e",
+      "backFace": null
+    },
+    "fe61d0b3-f713-4f42-94cb-9a6b2d3a2e8a": {
+      "room": "712eb157-59ba-465b-b75a-1ebc6c7ed24b",
+      "vertex": "a22547d5-ea65-42fe-8dd1-3ac9b06b23d6",
+      "next": "9a565b8a-e93c-41b3-9f24-ad64a7170286",
+      "backFace": "b66de0d0-9872-4468-9347-92e8c38a8cd1"
+    },
+    "74d2f31e-26d2-4a06-9ecd-127ddb9d7f34": {
+      "room": "712eb157-59ba-465b-b75a-1ebc6c7ed24b",
+      "vertex": "70aefe29-dc5a-48a5-8371-83e4c0b45156",
+      "next": "cb68bc41-b8b9-4766-8f48-60ee40679123",
+      "backFace": "4ab61500-db6f-435f-9463-fcbd6e80f719"
+    }
+  },
+  "vertices": {
+    "ae4020f2-f0ff-4a37-a264-aa70b38cb475": {
+      "x": 1.5,
+      "z": -6.0
+    },
+    "fd39906c-faf8-45af-92ee-88decb45810f": {
+      "x": -1.75,
+      "z": 2.5
+    },
+    "55306864-856b-4c0d-bc3d-6803ad9e4627": {
+      "x": 0.0,
+      "z": -2.0
+    },
+    "6b561508-e3a2-4f8a-8b9e-3200dad446b9": {
+      "x": -4.0,
+      "z": -6.0
+    },
+    "4a0261fa-bc07-429d-8014-2268f9f3ed1f": {
+      "x": 1.0,
+      "z": 0.0
+    },
+    "f7cf5780-9181-453d-a7ec-05afaf84ee58": {
+      "x": 0.0,
+      "z": -10.0
+    },
+    "3127d010-96b5-44e7-9f8d-f81fdc829616": {
+      "x": -4.0,
+      "z": -2.0
+    },
+    "8c727a47-2c6b-4534-a756-3c732fc2e895": {
+      "x": 0.0,
+      "z": -3.0
+    },
+    "48ab6c7b-9261-422c-8580-869b8f675c66": {
+      "x": 0.5,
+      "z": -2.25
+    },
+    "ac8a0867-c31d-4557-9b61-244a347fccfd": {
+      "x": -4.0,
+      "z": 5.5
+    },
+    "bb8d570f-b631-4afa-81b8-7bb6e00ea71d": {
+      "x": -1.0,
+      "z": -6.5
+    },
+    "ac6d3ab2-8bb9-42e6-bbbd-e8cd4e171d60": {
+      "x": 1.0,
+      "z": 1.0
+    },
+    "a22547d5-ea65-42fe-8dd1-3ac9b06b23d6": {
+      "x": 1.5,
+      "z": 1.5
+    },
+    "70aefe29-dc5a-48a5-8371-83e4c0b45156": {
+      "x": 2.0,
+      "z": -0.5
+    },
+    "2c9ea4f5-f4e0-41f1-9e0c-6fb1a7389eb4": {
+      "x": 1.5,
+      "z": 0.0
+    },
+    "2dc1c4f2-3dfb-4ef7-80b0-812ed9701b70": {
+      "x": 0.0,
+      "z": -6.0
+    },
+    "6f6c80e3-b900-4a22-92ae-67faaf40a0bc": {
+      "x": -4.0,
+      "z": 2.5
+    },
+    "a8ec637c-eceb-4fc2-946c-92591fb97cff": {
+      "x": 0.0,
+      "z": -5.0
+    },
+    "8fba74ad-161b-4b25-9307-335686841a7b": {
+      "x": 1.5,
+      "z": -1.25
+    },
+    "042dd771-e040-4c51-a31f-e577f710f8d6": {
+      "x": 0.5,
+      "z": -5.0
+    },
+    "c1ea6e61-280a-4406-a178-8fc58c3ebe3a": {
+      "x": -4.25,
+      "z": 0.25
+    },
+    "1b06c737-640d-43da-81b3-35768d1e3530": {
+      "x": -3.0,
+      "z": -2.0
+    },
+    "b12384d1-81cc-4275-88e1-f67169367757": {
+      "x": -1.0,
+      "z": -5.0
+    },
+    "72620aaa-16b1-4e9b-8a8f-c439084d544f": {
+      "x": -4.0,
+      "z": -1.5
+    },
+    "7fbc141f-a8d1-441f-b4ef-565bee23d8d3": {
+      "x": -3.0,
+      "z": -6.0
+    },
+    "1135630e-0294-4863-95ca-7d7c21d4c01b": {
+      "x": -4.25,
+      "z": 1.5
+    },
+    "c54b4a8b-bfcb-4ed7-ba31-061809aa64c0": {
+      "x": -4.0,
+      "z": 1.5
+    },
+    "646e3ca2-2b85-4de0-93cb-3fbda54c1171": {
+      "x": -4.0,
+      "z": 2.0
+    },
+    "d8207226-e74c-4d38-88a8-1601cc963126": {
+      "x": -4.0,
+      "z": 0.25
+    },
+    "c4256044-e5f7-4510-a7b0-790e46abcc58": {
+      "x": -4.25,
+      "z": -1.5
+    },
+    "5dd80b25-5959-443f-91de-51a5d0fe19b8": {
+      "x": 0.5,
+      "z": 2.0
+    },
+    "0c0ccc32-d570-4654-bf81-7a620fc75598": {
+      "x": -4.0,
+      "z": -6.5
+    },
+    "82fac7f6-e891-4f77-8671-47160800e73c": {
+      "x": 1.0,
+      "z": -1.0
+    },
+    "720453c4-224d-42ec-b5dd-9b47e251d093": {
+      "x": 5.0,
+      "z": -6.5
+    },
+    "ab7bc452-737d-4861-8389-8c74be924891": {
+      "x": -4.25,
+      "z": -0.25
+    },
+    "e5937269-a7cc-4573-90c3-01edf2bc2b2c": {
+      "x": 5.0,
+      "z": -6.0
+    },
+    "eb30c9a1-27be-4be7-a44c-73e8a1cb3535": {
+      "x": 1.5,
+      "z": -6.5
+    },
+    "da5dc857-f322-4ab2-86e0-429ab868e108": {
+      "x": 2.0,
+      "z": 1.5
+    },
+    "91084d8e-e166-4f1b-b678-80c30026fc62": {
+      "x": 5.0,
+      "z": -9.0
+    },
+    "ab4c0d7e-0236-46fd-bfd7-dc9354bb4d80": {
+      "x": 0.5,
+      "z": -6.0
+    },
+    "6fac0003-bddc-4aca-9a1e-803a8bf5753c": {
+      "x": 1.0,
+      "z": -9.0
+    },
+    "e313a844-ebcf-48ca-aa4e-bf12ce160ead": {
+      "x": -3.0,
+      "z": -5.0
+    },
+    "6f7f6ad2-46c6-48a1-a765-e7ef381ba7fa": {
+      "x": -4.0,
+      "z": -10.0
+    },
+    "5b0ad9eb-d11f-4113-9c98-6476297002b1": {
+      "x": -1.0,
+      "z": -6.0
+    },
+    "f37ec2b9-9379-4e47-8bc5-326f59155ac8": {
+      "x": -3.0,
+      "z": -6.5
+    },
+    "ec146758-a852-4a87-8b26-6f9abc7319f8": {
+      "x": -3.5,
+      "z": 2.5
+    },
+    "8e7f203b-826c-42fd-822b-6bbbd7308ae7": {
+      "x": 4.0,
+      "z": -6.0
+    },
+    "0f314588-7770-4924-b171-b8a4c26277d1": {
+      "x": -4.0,
+      "z": -0.25
+    },
+    "c242ff7c-b88d-4e79-8e33-62193f74f501": {
+      "x": -1.25,
+      "z": 2.0
+    },
+    "c8d172d1-d45a-421e-85d1-13603170a128": {
+      "x": 1.0,
+      "z": 2.0
+    },
+    "d16e7654-b833-496b-81b7-57dca0e2797e": {
+      "x": 0.5,
+      "z": 2.5
+    },
+    "a8caf9cb-842c-442e-a173-8f7150799d50": {
+      "x": -1.75,
+      "z": 2.0
+    },
+    "d7d9b92b-f753-486b-b92b-c267757ed589": {
+      "x": -3.5,
+      "z": 2.0
+    },
+    "36849a59-cb38-4f33-ac11-3d897fd777e6": {
+      "x": -1.25,
+      "z": 2.5
+    },
+    "e41e2689-721b-4e68-b825-57940003eb9f": {
+      "x": 4.0,
+      "z": -6.5
+    },
+    "e989c787-a51b-4e0e-a51c-c93c57905358": {
+      "x": 1.5,
+      "z": 2.5
+    },
+    "5eaff03c-2cf5-449b-9340-359e5151175f": {
+      "x": 1.5,
+      "z": 1.0
+    },
+    "da45f7d7-8bc5-4228-bde2-e81d229ae395": {
+      "x": 1.5,
+      "z": -0.5
+    },
+    "f8db4875-9f72-4b20-8ba8-b8c2d0dbbdcc": {
+      "x": 5.0,
+      "z": 5.5
+    },
+    "08963774-27c9-4ced-8307-e1c3d40c2abd": {
+      "x": 0.5,
+      "z": -3.0
+    }
+  }
+}
