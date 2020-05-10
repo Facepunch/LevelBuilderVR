@@ -1,5 +1,4 @@
-﻿using Unity.Collections;
-using Unity.Entities;
+﻿using Unity.Entities;
 
 namespace LevelBuilderVR.Systems
 {
@@ -12,6 +11,7 @@ namespace LevelBuilderVR.Systems
     {
         protected override void OnUpdate()
         {
+            var getHalfEdge = GetComponentDataFromEntity<HalfEdge>(true);
             var getDirtyMesh = GetComponentDataFromEntity<DirtyMesh>(true);
 
             Entities
@@ -22,6 +22,12 @@ namespace LevelBuilderVR.Systems
                 {
                     PostUpdateCommands.RemoveComponent<DirtyMesh>(halfEdge.Vertex);
                     PostUpdateCommands.AddComponent<DirtyMesh>(halfEdge.Room);
+                }
+
+                if (halfEdge.BackFace != Entity.Null && getDirtyMesh.HasComponent(halfEdge.Room))
+                {
+                    var backHalfEdge = getHalfEdge[halfEdge.BackFace];
+                    PostUpdateCommands.AddComponent<DirtyMesh>(backHalfEdge.Room);
                 }
             });
         }

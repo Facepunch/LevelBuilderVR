@@ -693,7 +693,7 @@ namespace LevelBuilderVR.Entities
         [ThreadStatic] private static Dictionary<Entity, Entity> _sRoomHalfEdges;
 
         public static bool FindClosestFloorCeiling(this EntityManager em, Entity level, float3 localPos,
-            bool alwaysAtMidpoint, out Entity outRoom, out FaceKind outKind, out float3 outClosestPoint)
+            out Entity outRoom, out FaceKind outKind, out float3 outClosestPoint)
         {
             if (_sRoomHalfEdges == null)
             {
@@ -732,17 +732,10 @@ namespace LevelBuilderVR.Entities
                 foreach (var roomEntity in roomEntities)
                 {
                     var firstHalfEdgeEntity = _sRoomHalfEdges[roomEntity];
-                    var centroid2D = alwaysAtMidpoint
-                        ? em.Get2DCentroidOfEdgeLoop(firstHalfEdgeEntity)
-                        : default;
-
-                    var centroid = new float3(centroid2D.x, 0f, centroid2D.y);
 
                     if (em.GetFacePlane<FlatFloor, SlopedFloor>(roomEntity, out var floor))
                     {
-                        var planePos = alwaysAtMidpoint
-                            ? floor.ProjectOnto(centroid, up)
-                            : floor.GetClosestPoint(localPos);
+                        var planePos = floor.GetClosestPoint(localPos);
                         var dist2 = math.distancesq(planePos, localPos);
 
                         if (dist2 < bestDist2 && em.IsPointWithinHalfEdgeLoop(firstHalfEdgeEntity, planePos))
@@ -756,9 +749,7 @@ namespace LevelBuilderVR.Entities
 
                     if (em.GetFacePlane<FlatCeiling, SlopedCeiling>(roomEntity, out var ceiling))
                     {
-                        var planePos = alwaysAtMidpoint
-                            ? ceiling.ProjectOnto(centroid, up)
-                            : ceiling.GetClosestPoint(localPos);
+                        var planePos = ceiling.GetClosestPoint(localPos);
                         var dist2 = math.distancesq(planePos, localPos);
 
                         if (dist2 < bestDist2 && em.IsPointWithinHalfEdgeLoop(firstHalfEdgeEntity, planePos))

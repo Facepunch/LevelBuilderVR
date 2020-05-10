@@ -57,6 +57,7 @@ namespace LevelBuilderVR.Behaviours.Tools
             public Face HoveredFace;
             public bool IsActionHeld;
             public bool IsDragging;
+            public bool IsDraggingFace;
             public bool IsDeselecting;
             public float3 DragOrigin;
             public float3 DragApplied;
@@ -176,6 +177,8 @@ namespace LevelBuilderVR.Behaviours.Tools
 
             var newHoveredVertexWorldPos = float3.zero;
             var newHoveredVertexDist2 = float.PositiveInfinity;
+            var newHoveredHalfEdgeWorldPos = float3.zero;
+            var newHoveredHalfEdgeDist2 = float.PositiveInfinity;
 
             // Vertex widget
             if (EntityManager.FindClosestVertex(Level, localHandPos, out var newHoveredVertex, out var hoverPos))
@@ -187,9 +190,11 @@ namespace LevelBuilderVR.Behaviours.Tools
                 {
                     newHoveredVertex = Entity.Null;
                 }
-
-                newHoveredVertexDist2 = dist2;
-                newHoveredVertexWorldPos = hoverWorldPos;
+                else
+                {
+                    newHoveredVertexDist2 = dist2;
+                    newHoveredVertexWorldPos = hoverWorldPos;
+                }
             }
 
             // HalfEdge / new Vertex widget
@@ -216,6 +221,8 @@ namespace LevelBuilderVR.Behaviours.Tools
                 else
                 {
                     newHoveredVertex = Entity.Null;
+                    newHoveredHalfEdgeDist2 = dist2;
+
                     EntityManager.SetComponentData(_halfEdgeWidgetVertex, virtualVertex);
                 }
             }
@@ -224,16 +231,20 @@ namespace LevelBuilderVR.Behaviours.Tools
 
             // Floor / ceiling widget
             if (!state.IsActionHeld && EntityManager.FindClosestFloorCeiling(Level, localHandPos,
-                newHoveredVertex != Entity.Null || newHoveredHalfEdge != Entity.Null,
                 out var newHoveredRoom, out var newHoveredFaceKind, out hoverPos))
             {
                 var hoverWorldPos = math.transform(localToWorld, hoverPos);
                 var dist2 = math.distancesq(hoverWorldPos, handPos);
 
-                if (dist2 <= interactDist2 && dist2 < newHoveredVertexDist2)
+                if (dist2 <= interactDist2 && dist2 < newHoveredVertexDist2 && dist2 < newHoveredHalfEdgeDist2)
                 {
+                    newHoveredVertex = Entity.Null;
+                    newHoveredHalfEdge = Entity.Null;
                     newHoveredFace = new Face(newHoveredRoom, newHoveredFaceKind);
+
                     HybridLevel.ExtrudeWidget.transform.position = hoverWorldPos;
+
+                    _gridOrigin.y = hoverPos.y;
                 }
             }
 
@@ -367,6 +378,7 @@ namespace LevelBuilderVR.Behaviours.Tools
             }
 
             state.IsDragging = true;
+            state.IsDraggingFace = state.HoveredFace.Room != Entity.Null;
             state.DragOrigin = handPos;
             state.DragApplied = float3.zero;
 
@@ -380,7 +392,7 @@ namespace LevelBuilderVR.Behaviours.Tools
             }
         }
 
-        private bool UpdateDragging(Hand hand, float3 handPos, ref HandState state)
+        private void UpdateDragging(Hand hand, float3 handPos, ref HandState state)
         {
             _gridOrigin.x = handPos.x;
             _gridOrigin.z = handPos.z;
@@ -412,14 +424,21 @@ namespace LevelBuilderVR.Behaviours.Tools
 
             offset -= state.DragApplied;
 
-            var intOffset = new int3(math.round(offset / GridSnap))
+            var intOffset = new int3(math.round(offset / GridSnap));
+
+            if (state.IsDraggingFace)
             {
-                y = 0
-            };
+                intOffset.x = 0;
+                intOffset.z = 0;
+            }
+            else
+            {
+                intOffset.y = 0;
+            }
 
             if (math.lengthsq(intOffset) <= 0)
             {
-                return false;
+                return;
             }
 
             offset = new float3(intOffset) * GridSnap;
@@ -427,34 +446,63 @@ namespace LevelBuilderVR.Behaviours.Tools
             state.DragApplied += offset;
             HybridLevel.SetDragOffset(-state.DragApplied);
 
-            var selectedEntities = _getSelectedVertices.ToEntityArray(Allocator.TempJob);
-            var moves = new NativeArray<Move>(selectedEntities.Length, Allocator.TempJob);
-
-            var move = new Move {Offset = offset};
-
-            for (var i = 0; i < moves.Length; ++i)
+            if (state.IsDraggingFace)
             {
-                moves[i] = move;
+                switch (state.HoveredFace.Kind)
+                {
+                    case FaceKind.Floor:
+                    {
+                        if (EntityManager.HasComponent<FlatFloor>(state.HoveredFace.Room))
+                        {
+                            var flatFloor = EntityManager.GetComponentData<FlatFloor>(state.HoveredFace.Room);
+                            flatFloor.Y += offset.y;
+                            EntityManager.SetComponentData(state.HoveredFace.Room, flatFloor);
+                        }
+
+                        break;
+                    }
+                    case FaceKind.Ceiling:
+                    {
+                        if (EntityManager.HasComponent<FlatCeiling>(state.HoveredFace.Room))
+                        {
+                            var flatCeiling = EntityManager.GetComponentData<FlatCeiling>(state.HoveredFace.Room);
+                            flatCeiling.Y += offset.y;
+                            EntityManager.SetComponentData(state.HoveredFace.Room, flatCeiling);
+                        }
+
+                        break;
+                    }
+                }
+
+                EntityManager.AddComponent<DirtyMesh>(state.HoveredFace.Room);
             }
+            else
+            {
+                var selectedEntities = _getSelectedVertices.ToEntityArray(Allocator.TempJob);
+                var moves = new NativeArray<Move>(selectedEntities.Length, Allocator.TempJob);
 
-            EntityManager.AddComponentData(_getSelectedVertices, moves);
-            EntityManager.AddComponent<DirtyMesh>(_getSelectedVertices);
+                var move = new Move { Offset = offset };
 
-            selectedEntities.Dispose();
-            moves.Dispose();
+                for (var i = 0; i < moves.Length; ++i)
+                {
+                    moves[i] = move;
+                }
 
-            return true;
+                EntityManager.AddComponentData(_getSelectedVertices, moves);
+                EntityManager.AddComponent<DirtyMesh>(_getSelectedVertices);
+
+                selectedEntities.Dispose();
+                moves.Dispose();
+            }
         }
 
-        private bool StopDragging(ref HandState state)
+        private void StopDragging(ref HandState state)
         {
             HybridLevel.SetDragOffset(Vector3.zero);
 
             EntityManager.AddComponent<MergeOverlappingVertices>(Level);
 
             state.IsDragging = false;
-
-            return false;
         }
 
         private void ResetState(ref HandState state)
