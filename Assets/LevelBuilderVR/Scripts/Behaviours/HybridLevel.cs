@@ -51,7 +51,7 @@ namespace LevelBuilderVR.Behaviours
 
             ExtrudeWidget.gameObject.SetActive(false);
 
-            if (!Load(FilePath))
+            if (!Load(FilePath) && !Load("Example.level"))
             {
                 Level = World.DefaultGameObjectInjectionWorld.EntityManager.CreateLevelTemplate(new float3(8f, 3f, 12f));
             }
