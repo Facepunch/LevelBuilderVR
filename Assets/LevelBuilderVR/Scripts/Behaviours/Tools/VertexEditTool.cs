@@ -1,4 +1,5 @@
-﻿using LevelBuilderVR.Entities;
+﻿using System;
+using LevelBuilderVR.Entities;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -10,10 +11,50 @@ namespace LevelBuilderVR.Behaviours.Tools
 {
     public class VertexEditTool : Tool
     {
+        private struct Face : IEquatable<Face>
+        {
+            public static bool operator ==(Face a, Face b)
+            {
+                return a.Room == b.Room && a.Kind == b.Kind;
+            }
+            public static bool operator !=(Face a, Face b)
+            {
+                return a.Room != b.Room || a.Kind != b.Kind;
+            }
+
+            public readonly Entity Room;
+            public readonly FaceKind Kind;
+
+            public Face(Entity room, FaceKind kind)
+            {
+                Room = room;
+                Kind = kind;
+            }
+
+            public bool Equals(Face other)
+            {
+                return Room.Equals(other.Room) && Kind == other.Kind;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is Face other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    return (Room.GetHashCode() * 397) ^ (int) Kind;
+                }
+            }
+        }
+
         private struct HandState
         {
             public Entity HoveredVertex;
             public Entity HoveredHalfEdge;
+            public Face HoveredFace;
             public bool IsActionHeld;
             public bool IsDragging;
             public bool IsDeselecting;
@@ -136,6 +177,7 @@ namespace LevelBuilderVR.Behaviours.Tools
             var newHoveredVertexWorldPos = float3.zero;
             var newHoveredVertexDist2 = float.PositiveInfinity;
 
+            // Vertex widget
             if (EntityManager.FindClosestVertex(Level, localHandPos, out var newHoveredVertex, out var hoverPos))
             {
                 var hoverWorldPos = math.transform(localToWorld, hoverPos);
@@ -150,6 +192,7 @@ namespace LevelBuilderVR.Behaviours.Tools
                 newHoveredVertexWorldPos = hoverWorldPos;
             }
 
+            // HalfEdge / new Vertex widget
             var newHoveredHalfEdge = Entity.Null;
             if (!state.IsActionHeld && EntityManager.FindClosestHalfEdge(Level, localHandPos, newHoveredVertex != Entity.Null, out newHoveredHalfEdge, out hoverPos, out var virtualVertex))
             {
@@ -177,21 +220,24 @@ namespace LevelBuilderVR.Behaviours.Tools
                 }
             }
 
+            Face newHoveredFace = default;
+
+            // Floor / ceiling widget
             if (!state.IsActionHeld && EntityManager.FindClosestFloorCeiling(Level, localHandPos,
                 newHoveredVertex != Entity.Null || newHoveredHalfEdge != Entity.Null,
                 out var newHoveredRoom, out var newHoveredFaceKind, out hoverPos))
             {
                 var hoverWorldPos = math.transform(localToWorld, hoverPos);
+                var dist2 = math.distancesq(hoverWorldPos, handPos);
 
-                HybridLevel.ExtrudeWidget.gameObject.SetActive(true);
-                HybridLevel.ExtrudeWidget.transform.position = hoverWorldPos;
-            }
-            else
-            {
-                HybridLevel.ExtrudeWidget.gameObject.SetActive(false);
+                if (dist2 <= interactDist2 && dist2 < newHoveredVertexDist2)
+                {
+                    newHoveredFace = new Face(newHoveredRoom, newHoveredFaceKind);
+                    HybridLevel.ExtrudeWidget.transform.position = hoverWorldPos;
+                }
             }
 
-            if (state.HoveredVertex == newHoveredVertex && state.HoveredHalfEdge == newHoveredHalfEdge)
+            if (state.HoveredVertex == newHoveredVertex && state.HoveredHalfEdge == newHoveredHalfEdge && state.HoveredFace == newHoveredFace)
             {
                 return true;
             }
@@ -217,6 +263,12 @@ namespace LevelBuilderVR.Behaviours.Tools
             {
                 EntityManager.SetVisible(_halfEdgeWidgetVertex, newHoveredHalfEdge != Entity.Null);
                 state.HoveredHalfEdge = newHoveredHalfEdge;
+            }
+
+            if (state.HoveredFace != newHoveredFace)
+            {
+                HybridLevel.ExtrudeWidget.gameObject.SetActive(newHoveredFace.Room != Entity.Null);
+                state.HoveredFace = newHoveredFace;
             }
 
             return true;

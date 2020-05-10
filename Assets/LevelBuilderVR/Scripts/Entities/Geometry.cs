@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using LevelBuilderVR.Behaviours;
@@ -554,28 +555,126 @@ namespace LevelBuilderVR.Entities
             return false;
         }
 
+        public static HalfLoopVertexPairEnumerable EnumerateVertexPairsInHalfLoop(this EntityManager em, Entity first)
+        {
+            return new HalfLoopVertexPairEnumerable(em, first);
+        }
+
+        public struct HalfLoopVertexPairEnumerable : IEnumerable<VertexPair>
+        {
+            public struct Enumerator : IEnumerator<VertexPair>
+            {
+                private readonly EntityManager _em;
+                private readonly Entity _entFirst;
+
+                private Entity _entNext;
+                private Entity _entLast;
+                private bool _continueNext;
+
+                private VertexPair _current;
+
+                public Enumerator(EntityManager em, Entity first)
+                {
+                    _em = em;
+                    _entFirst = first;
+
+                    _entNext = default;
+                    _entLast = default;
+                    _current = default;
+                    _continueNext = default;
+
+                    Reset();
+                }
+
+                public void Reset()
+                {
+                    var heFirst = _em.GetComponentData<HalfEdge>(_entFirst);
+                    var vFirst = _em.GetComponentData<Vertex>(heFirst.Vertex);
+
+                    _current = new VertexPair(default, vFirst);
+                    _entNext = _entLast = heFirst.Next;
+                    _continueNext = true;
+                }
+
+                public bool MoveNext()
+                {
+                    var heNext = _em.GetComponentData<HalfEdge>(_entNext);
+                    var vNext = _em.GetComponentData<Vertex>(heNext.Vertex);
+
+                    _current = new VertexPair(_current.Next, vNext);
+                    _entNext = heNext.Next;
+
+                    var shouldContinue = _continueNext;
+                    _continueNext = _entNext != _entLast;
+
+                    return shouldContinue;
+                }
+
+                public VertexPair Current => _current;
+
+                object IEnumerator.Current => Current;
+
+                public void Dispose() { }
+            }
+
+            private readonly EntityManager _em;
+            private readonly Entity _entFirst;
+
+            public HalfLoopVertexPairEnumerable(EntityManager em, Entity first)
+            {
+                _em = em;
+                _entFirst = first;
+            }
+
+            public Enumerator GetEnumerator()
+            {
+                return new Enumerator(_em, _entFirst);
+            }
+
+            IEnumerator<VertexPair> IEnumerable<VertexPair>.GetEnumerator()
+            {
+                return GetEnumerator();
+            }
+
+            IEnumerator IEnumerable.GetEnumerator()
+            {
+                return GetEnumerator();
+            }
+        }
+
+        public static float2 Get2DCentroidOfEdgeLoop(this EntityManager em, Entity first)
+        {
+            var signedArea = 0f;
+            var totals = new float2(0f, 0f);
+
+            foreach (var pair in em.EnumerateVertexPairsInHalfLoop(first))
+            {
+                var a = new float2(pair.Prev.X, pair.Prev.Z);
+                var b = new float2(pair.Next.X, pair.Next.Z);
+
+                var cross = a.x * b.y - b.x * a.y;
+
+                totals += new float2(a.x + b.x, a.y + b.y) * cross;
+                signedArea += cross;
+            }
+
+            // NB: signedArea is actually 2x the signed area
+            return totals / (3f * signedArea);
+        }
+
         public static bool IsPointWithinHalfEdgeLoop(this EntityManager em, Entity first, float3 localPos)
         {
             var winding = 0;
-
-            var entFirst = first;
-            var heFirst = em.GetComponentData<HalfEdge>(entFirst);
-            var vFirst = em.GetComponentData<Vertex>(heFirst.Vertex);
-            var a = new float2(vFirst.X, vFirst.Z);
-
-            var entNext = heFirst.Next;
 
             var p = new float2(localPos.x, localPos.z);
             var n = new float2(0f, 1f);
 
             var np = math.dot(n, p);
 
-            do
+            foreach (var pair in em.EnumerateVertexPairsInHalfLoop(first))
             {
-                var heNext = em.GetComponentData<HalfEdge>(entNext);
-                var vNext = em.GetComponentData<Vertex>(heNext.Vertex);
-
-                var b = new float2(vNext.X, vNext.Z);
+                var a = new float2(pair.Prev.X, pair.Prev.Z);
+                var b = new float2(pair.Next.X, pair.Next.Z);
 
                 var diff = b - a;
 
@@ -586,29 +685,9 @@ namespace LevelBuilderVR.Entities
                 {
                     winding += Math.Sign(a.y - b.y);
                 }
-
-                entNext = heNext.Next;
-                a = b;
-            } while (entNext != heFirst.Next);
-
-            return winding != 0;
-        }
-
-        private static bool FindClosestOnPlane(Plane plane, float3 localPos, ref float bestDist2, out float3 outClosestPoint)
-        {
-            outClosestPoint = float3.zero;
-
-            var onPlane = plane.GetClosestPoint(localPos);
-            var dist2 = math.distancesq(onPlane, localPos);
-
-            if (dist2 >= bestDist2)
-            {
-                return false;
             }
 
-            bestDist2 = dist2;
-            outClosestPoint = onPlane;
-            return true;
+            return winding != 0;
         }
 
         [ThreadStatic] private static Dictionary<Entity, Entity> _sRoomHalfEdges;
@@ -645,29 +724,50 @@ namespace LevelBuilderVR.Entities
             outKind = FaceKind.None;
             outClosestPoint = localPos;
 
+            var up = new float3(0f, 1f, 0f);
+
             _sRoomsQuery.SetSharedComponentFilter(withinLevel);
             using (var roomEntities = _sRoomsQuery.ToEntityArray(Allocator.TempJob))
             {
                 foreach (var roomEntity in roomEntities)
                 {
                     var firstHalfEdgeEntity = _sRoomHalfEdges[roomEntity];
+                    var centroid2D = alwaysAtMidpoint
+                        ? em.Get2DCentroidOfEdgeLoop(firstHalfEdgeEntity)
+                        : default;
 
-                    if (em.GetFacePlane<FlatFloor, SlopedFloor>(roomEntity, out var floor)
-                        && FindClosestOnPlane(floor, localPos, ref bestDist2, out var closestOnFloor)
-                        && em.IsPointWithinHalfEdgeLoop(firstHalfEdgeEntity, closestOnFloor))
+                    var centroid = new float3(centroid2D.x, 0f, centroid2D.y);
+
+                    if (em.GetFacePlane<FlatFloor, SlopedFloor>(roomEntity, out var floor))
                     {
-                        outRoom = roomEntity;
-                        outKind = FaceKind.Floor;
-                        outClosestPoint = closestOnFloor;
+                        var planePos = alwaysAtMidpoint
+                            ? floor.ProjectOnto(centroid, up)
+                            : floor.GetClosestPoint(localPos);
+                        var dist2 = math.distancesq(planePos, localPos);
+
+                        if (dist2 < bestDist2 && em.IsPointWithinHalfEdgeLoop(firstHalfEdgeEntity, planePos))
+                        {
+                            bestDist2 = dist2;
+                            outRoom = roomEntity;
+                            outKind = FaceKind.Floor;
+                            outClosestPoint = planePos;
+                        }
                     }
 
-                    if (em.GetFacePlane<FlatCeiling, SlopedCeiling>(roomEntity, out var ceiling)
-                        && FindClosestOnPlane(ceiling, localPos, ref bestDist2, out var closestOnCeiling)
-                        && em.IsPointWithinHalfEdgeLoop(firstHalfEdgeEntity, closestOnCeiling))
+                    if (em.GetFacePlane<FlatCeiling, SlopedCeiling>(roomEntity, out var ceiling))
                     {
-                        outRoom = roomEntity;
-                        outKind = FaceKind.Ceiling;
-                        outClosestPoint = closestOnCeiling;
+                        var planePos = alwaysAtMidpoint
+                            ? ceiling.ProjectOnto(centroid, up)
+                            : ceiling.GetClosestPoint(localPos);
+                        var dist2 = math.distancesq(planePos, localPos);
+
+                        if (dist2 < bestDist2 && em.IsPointWithinHalfEdgeLoop(firstHalfEdgeEntity, planePos))
+                        {
+                            bestDist2 = dist2;
+                            outRoom = roomEntity;
+                            outKind = FaceKind.Ceiling;
+                            outClosestPoint = planePos;
+                        }
                     }
                 }
             }

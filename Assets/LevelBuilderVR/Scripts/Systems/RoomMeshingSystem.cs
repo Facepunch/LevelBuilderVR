@@ -95,7 +95,7 @@ namespace LevelBuilderVR.Systems
                 return new float3(vertex.X, plane.Point.y, vertex.Z);
             }
 
-            return math.dot(plane.Normal, plane.Point - new float3(vertex.X, 0f, vertex.Z)) / plane.Normal.y;
+            return plane.ProjectOnto(new float3(vertex.X, 0f, vertex.Z), new float3(0f, 1f, 0f));
         }
 
         protected override void OnUpdate()

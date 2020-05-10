@@ -72,6 +72,25 @@ namespace LevelBuilderVR
         {
             return pos - math.dot(pos - Point, Normal) * Normal;
         }
+
+        [Pure]
+        public float3 ProjectOnto(float3 pos, float3 dir)
+        {
+            var t = (math.dot(Normal, Point) - math.dot(Normal, pos)) / math.dot(Normal, dir);
+            return pos + dir * t;
+        }
+    }
+
+    public struct VertexPair
+    {
+        public readonly Vertex Prev;
+        public readonly Vertex Next;
+
+        public VertexPair(Vertex prev, Vertex next)
+        {
+            Prev = prev;
+            Next = next;
+        }
     }
 
     public struct FlatFloor : IComponentData, IFlatFace
