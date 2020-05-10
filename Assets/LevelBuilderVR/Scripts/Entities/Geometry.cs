@@ -305,6 +305,7 @@ namespace LevelBuilderVR.Entities
 
             var entBackNext = heBackPrev.Next;
             heBackPrev.Next = entBackNew;
+            heBackPrev.BackFace = entNew;
             hePrev.BackFace = entBackNew;
 
             em.SetComponentData(prev, hePrev);

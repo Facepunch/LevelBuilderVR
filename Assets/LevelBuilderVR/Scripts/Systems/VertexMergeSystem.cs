@@ -55,11 +55,10 @@ namespace LevelBuilderVR.Systems
                 getHalfEdge[backFace] = backFaceHalfEdge;
 
                 _backfaceCandidates.Remove(key.Complement);
+                return;
             }
-            else
-            {
-                _backfaceCandidates.Add(key, entity);
-            }
+
+            _backfaceCandidates.Add(key, entity);
         }
 
         private int CountHalfEdgesInLoop(Entity first, ComponentDataFromEntity<HalfEdge> getHalfEdge)
@@ -114,9 +113,9 @@ namespace LevelBuilderVR.Systems
                     else
                     {
                         complement.BackFace = Entity.Null;
-                        getHalfEdge[halfEdge.BackFace] = complement;
 
                         HandleBackFaceCandidate(halfEdge.BackFace, complement.Vertex, ref complement, getHalfEdge);
+                        getHalfEdge[halfEdge.BackFace] = complement;
                     }
                 }
 
