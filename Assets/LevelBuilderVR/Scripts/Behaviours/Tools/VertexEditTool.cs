@@ -1,5 +1,4 @@
-﻿using System;
-using LevelBuilderVR.Entities;
+﻿using LevelBuilderVR.Entities;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -15,16 +14,15 @@ namespace LevelBuilderVR.Behaviours.Tools
         {
             public Entity HoveredVertex;
             public Entity HoveredHalfEdge;
-            public Entity HoveredFloorCeiling;
             public bool IsActionHeld;
             public bool IsDragging;
-            public bool IsDraggingFloorCeiling;
             public bool IsDeselecting;
             public float3 DragOrigin;
             public float3 DragApplied;
         }
 
         private HandState _state;
+        private Vector3 _gridOrigin;
 
         public ushort HapticPulseDurationMicros = 500;
 
@@ -33,8 +31,6 @@ namespace LevelBuilderVR.Behaviours.Tools
         private EntityQuery _getHalfEdgesWritable;
 
         private Entity _halfEdgeWidgetVertex;
-
-        private Vector3 _gridOrigin;
 
         public override bool AllowTwoHanded => false;
 
@@ -138,8 +134,6 @@ namespace LevelBuilderVR.Behaviours.Tools
 
             var newHoveredVertexWorldPos = float3.zero;
             var newHoveredVertexDist2 = float.PositiveInfinity;
-            var newHoveredHalfEdgeWorldPos = float3.zero;
-            var newHoveredHalfEdgeDist2 = float.PositiveInfinity;
 
             // Vertex widget
             if (EntityManager.FindClosestVertex(Level, localHandPos, out var newHoveredVertex, out var hoverPos))
@@ -182,36 +176,12 @@ namespace LevelBuilderVR.Behaviours.Tools
                 else
                 {
                     newHoveredVertex = Entity.Null;
-                    newHoveredHalfEdgeDist2 = dist2;
 
                     EntityManager.SetComponentData(_halfEdgeWidgetVertex, virtualVertex);
                 }
             }
 
-            // Floor / ceiling widget
-            var newHoveredFloorCeiling = Entity.Null;
-            if (!state.IsActionHeld && EntityManager.FindClosestFloorCeiling(Level, localHandPos,
-                out newHoveredFloorCeiling, out hoverPos))
-            {
-                var hoverWorldPos = math.transform(localToWorld, hoverPos);
-                var dist2 = math.distancesq(hoverWorldPos, handPos);
-
-                if (dist2 > interactDist2 || dist2 > newHoveredVertexDist2 || dist2 > newHoveredHalfEdgeDist2)
-                {
-                    newHoveredFloorCeiling = Entity.Null;
-                }
-                else
-                {
-                    newHoveredVertex = Entity.Null;
-                    newHoveredHalfEdge = Entity.Null;
-
-                    HybridLevel.ExtrudeWidget.transform.position = hoverWorldPos;
-
-                    _gridOrigin.y = hoverPos.y;
-                }
-            }
-
-            if (state.HoveredVertex == newHoveredVertex && state.HoveredHalfEdge == newHoveredHalfEdge && state.HoveredFloorCeiling == newHoveredFloorCeiling)
+            if (state.HoveredVertex == newHoveredVertex && state.HoveredHalfEdge == newHoveredHalfEdge)
             {
                 return true;
             }
@@ -237,12 +207,6 @@ namespace LevelBuilderVR.Behaviours.Tools
             {
                 EntityManager.SetVisible(_halfEdgeWidgetVertex, newHoveredHalfEdge != Entity.Null);
                 state.HoveredHalfEdge = newHoveredHalfEdge;
-            }
-
-            if (state.HoveredFloorCeiling != newHoveredFloorCeiling)
-            {
-                HybridLevel.ExtrudeWidget.gameObject.SetActive(newHoveredFloorCeiling != Entity.Null);
-                state.HoveredFloorCeiling = newHoveredFloorCeiling;
             }
 
             return true;
@@ -341,7 +305,6 @@ namespace LevelBuilderVR.Behaviours.Tools
             }
 
             state.IsDragging = true;
-            state.IsDraggingFloorCeiling = state.HoveredFloorCeiling != Entity.Null;
             state.DragOrigin = handPos;
             state.DragApplied = float3.zero;
 
@@ -387,17 +350,7 @@ namespace LevelBuilderVR.Behaviours.Tools
 
             offset -= state.DragApplied;
 
-            var intOffset = new int3(math.round(offset / GridSnap));
-
-            if (state.IsDraggingFloorCeiling)
-            {
-                intOffset.x = 0;
-                intOffset.z = 0;
-            }
-            else
-            {
-                intOffset.y = 0;
-            }
+            var intOffset = new int3(math.round(offset / GridSnap)) { y = 0 };
 
             if (math.lengthsq(intOffset) <= 0)
             {
@@ -409,40 +362,20 @@ namespace LevelBuilderVR.Behaviours.Tools
             state.DragApplied += offset;
             HybridLevel.SetDragOffset(-state.DragApplied);
 
-            if (state.IsDraggingFloorCeiling)
+            var selectedEntities = _getSelectedVertices.ToEntityArray(Allocator.TempJob);
+            var moves = new NativeArray<Move>(selectedEntities.Length, Allocator.TempJob);
+
+            var move = new Move { Offset = offset };
+
+            for (var i = 0; i < moves.Length; ++i)
             {
-                var floorCeiling = EntityManager.GetComponentData<FloorCeiling>(state.HoveredFloorCeiling);
-                floorCeiling.Plane.Point.y += offset.y;
-                EntityManager.SetComponentData(state.HoveredFloorCeiling, floorCeiling);
-
-                if (floorCeiling.Above != Entity.Null)
-                {
-                    EntityManager.AddComponent<DirtyMesh>(floorCeiling.Above);
-                }
-
-                if (floorCeiling.Below != Entity.Null)
-                {
-                    EntityManager.AddComponent<DirtyMesh>(floorCeiling.Below);
-                }
+                moves[i] = move;
             }
-            else
-            {
-                var selectedEntities = _getSelectedVertices.ToEntityArray(Allocator.TempJob);
-                var moves = new NativeArray<Move>(selectedEntities.Length, Allocator.TempJob);
 
-                var move = new Move { Offset = offset };
+            EntityManager.AddComponentData(_getSelectedVertices, moves);
 
-                for (var i = 0; i < moves.Length; ++i)
-                {
-                    moves[i] = move;
-                }
-
-                EntityManager.AddComponentData(_getSelectedVertices, moves);
-                EntityManager.AddComponent<DirtyMesh>(_getSelectedVertices);
-
-                selectedEntities.Dispose();
-                moves.Dispose();
-            }
+            selectedEntities.Dispose();
+            moves.Dispose();
         }
 
         private void StopDragging(ref HandState state)

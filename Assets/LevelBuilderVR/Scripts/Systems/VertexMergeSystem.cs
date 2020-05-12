@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace LevelBuilderVR.Systems
 {
-    [UpdateAfter(typeof(VertexEditSystem))]
+    [UpdateAfter(typeof(MoveSystem))]
     public class VertexMergeSystem : ComponentSystem
     {
         private EntityQuery _selectedVertices;

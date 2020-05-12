@@ -558,6 +558,7 @@ GameObject:
   - component: {fileID: 1542598996}
   - component: {fileID: 1542598995}
   - component: {fileID: 1542599000}
+  - component: {fileID: 1542598997}
   m_Layer: 0
   m_Name: PlayerSetup
   m_TagString: Untagged
@@ -657,6 +658,34 @@ MonoBehaviour:
   RadialMenu: {fileID: 0}
   LeftSelectedTool: {fileID: 0}
   RightSelectedTool: {fileID: 0}
+--- !u!114 &1542598997
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1542598992}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9ef537a00a9bb784183376d1a7842fd9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  UseToolAction:
+    actionPath: /actions/default/in/UseTool
+    needsReinit: 0
+  MultiSelectAction:
+    actionPath: /actions/default/in/MultiSelect
+    needsReinit: 0
+  AxisAlignAction:
+    actionPath: /actions/default/in/AxisAlign
+    needsReinit: 0
+  Label: Floor / Ceiling Edit
+  Icon: {fileID: 21300000, guid: f7218ba2baf316244afccc79b56508cd, type: 3}
+  LeftHandActive: 0
+  RightHandActive: 0
+  GridSnapTargetResolution: 0.01
+  InteractRadius: 0.05
+  HapticPulseDurationMicros: 500
 --- !u!114 &1542599000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -681,7 +710,7 @@ MonoBehaviour:
   Label: Vertex Edit
   Icon: {fileID: 21300000, guid: f52e32f42d3d0b442ba7843c3fa117de, type: 3}
   LeftHandActive: 0
-  RightHandActive: 1
+  RightHandActive: 0
   GridSnapTargetResolution: 0.01
   InteractRadius: 0.05
   HapticPulseDurationMicros: 500

@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace LevelBuilderVR.Systems
 {
-    [UpdateAfter(typeof(VertexEditSystem)), UpdateAfter(typeof(WidgetVisibleSystem))]
+    [UpdateAfter(typeof(MoveSystem)), UpdateAfter(typeof(WidgetVisibleSystem))]
     public class WidgetMaterialSystem : ComponentSystem
     {
         private HybridLevel _hybridLevel;

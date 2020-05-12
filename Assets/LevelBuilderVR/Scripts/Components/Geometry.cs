@@ -113,6 +113,7 @@ namespace LevelBuilderVR
     public struct WidgetsVisible : IComponentData
     {
         public bool Vertex;
+        public bool FloorCeiling;
     }
 
     public struct Selected : IComponentData
