@@ -263,46 +263,6 @@ namespace LevelBuilderVR.Systems
                             HandleBackFaceCandidate(entity, nextVertex, ref halfEdge, getHalfEdge);
                         });
 
-                    Entities
-                        .WithAll<Room, SlopedFloor>()
-                        .ForEach((ref SlopedFloor floor) =>
-                        {
-                            if (_vertexReplacements.TryGetValue(floor.Anchor0.Vertex, out var newVertex))
-                            {
-                                floor.Anchor0.Vertex = newVertex;
-                            }
-
-                            if (_vertexReplacements.TryGetValue(floor.Anchor1.Vertex, out newVertex))
-                            {
-                                floor.Anchor1.Vertex = newVertex;
-                            }
-
-                            if (_vertexReplacements.TryGetValue(floor.Anchor2.Vertex, out newVertex))
-                            {
-                                floor.Anchor2.Vertex = newVertex;
-                            }
-                        });
-
-                    Entities
-                        .WithAll<Room, SlopedCeiling>()
-                        .ForEach((ref SlopedCeiling ceiling) =>
-                        {
-                            if (_vertexReplacements.TryGetValue(ceiling.Anchor0.Vertex, out var newVertex))
-                            {
-                                ceiling.Anchor0.Vertex = newVertex;
-                            }
-
-                            if (_vertexReplacements.TryGetValue(ceiling.Anchor1.Vertex, out newVertex))
-                            {
-                                ceiling.Anchor1.Vertex = newVertex;
-                            }
-
-                            if (_vertexReplacements.TryGetValue(ceiling.Anchor2.Vertex, out newVertex))
-                            {
-                                ceiling.Anchor2.Vertex = newVertex;
-                            }
-                        });
-
                     _vertexReplacements.Clear();
 
                     // If two vertices of a room have been merged, the room will need to

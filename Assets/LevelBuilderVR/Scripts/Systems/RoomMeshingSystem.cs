@@ -26,7 +26,6 @@ namespace LevelBuilderVR.Systems
             _changedRoomsQuery = Entities
                 .WithAllReadOnly<Room, DirtyMesh>()
                 .WithAll<RenderMesh>()
-                .WithAnyReadOnly<FlatFloor, FlatCeiling, SlopedFloor, SlopedCeiling>()
                 .ToEntityQuery();
 
             _halfEdgesQuery = Entities
@@ -37,55 +36,6 @@ namespace LevelBuilderVR.Systems
                 .WithAllReadOnly<Room, RenderMesh, WithinLevel>()
                 .WithAll<LocalToWorld, RenderBounds>()
                 .ToEntityQuery();
-        }
-
-        private static bool GetFacePlane<TFlat, TSloped>(Entity roomEntity, ComponentDataFromEntity<Vertex> getVertex, ComponentDataFromEntity<TFlat> getFlat, ComponentDataFromEntity<TSloped> getSloped, out Plane plane)
-            where TFlat : struct, IComponentData, IFlatFace
-            where TSloped : struct, IComponentData, ISlopedFace
-        {
-            if (getFlat.HasComponent(roomEntity))
-            {
-                var flatFloor = getFlat[roomEntity];
-
-                plane = new Plane
-                {
-                    Normal = new float3(0f, 1f, 0f),
-                    Point = new float3(0f, flatFloor.Y, 0f)
-                };
-
-                return true;
-            }
-
-            if (getSloped.HasComponent(roomEntity))
-            {
-                var slopedFloor = getSloped[roomEntity];
-
-                var vertex0 = getVertex[slopedFloor.Anchor0.Vertex];
-                var vertex1 = getVertex[slopedFloor.Anchor1.Vertex];
-                var vertex2 = getVertex[slopedFloor.Anchor2.Vertex];
-
-                var a = new float3(vertex0.X, slopedFloor.Anchor0.Y, vertex0.Z);
-                var b = new float3(vertex1.X, slopedFloor.Anchor1.Y, vertex1.Z);
-                var c = new float3(vertex2.X, slopedFloor.Anchor2.Y, vertex2.Z);
-
-                var n = math.normalize(math.cross(b - a, c - a));
-
-                plane = new Plane
-                {
-                    Normal = n.y < 0f ? -n : n,
-                    Point = (a + b + c) / 3f
-                };
-
-                return true;
-            }
-
-            plane = new Plane
-            {
-                Normal = new float3(0f, 1f, 0f),
-                Point = float3.zero
-            };
-
-            return false;
         }
 
         private static float3 VertexToFloat3(in Plane plane, Vertex vertex)
@@ -172,15 +122,12 @@ namespace LevelBuilderVR.Systems
 
         protected override void OnUpdate()
         {
-            var getFlatFloor = GetComponentDataFromEntity<FlatFloor>(true);
-            var getSlopedFloor = GetComponentDataFromEntity<SlopedFloor>(true);
-            var getFlatCeiling = GetComponentDataFromEntity<FlatCeiling>(true);
-            var getSlopedCeiling = GetComponentDataFromEntity<SlopedCeiling>(true);
-
             var getVertex = GetComponentDataFromEntity<Vertex>(true);
             var getVertexWritable = GetComponentDataFromEntity<Vertex>(false);
             var getHalfEdge = GetComponentDataFromEntity<HalfEdge>(true);
             var getHalfEdgeWritable = GetComponentDataFromEntity<HalfEdge>(false);
+            var getRoom = GetComponentDataFromEntity<Room>(true);
+            var getFloorCeiling = GetComponentDataFromEntity<FloorCeiling>(true);
 
             var anyChangedRooms = false;
 
@@ -198,10 +145,22 @@ namespace LevelBuilderVR.Systems
                 {
                     PostUpdateCommands.RemoveComponent<DirtyMesh>(roomEntity);
 
-                    var hasFloor = GetFacePlane(roomEntity, getVertex, getFlatFloor, getSlopedFloor,
-                        out var floor);
-                    var hasCeiling = GetFacePlane(roomEntity, getVertex, getFlatCeiling, getSlopedCeiling,
-                        out var ceiling);
+                    var room = getRoom[roomEntity];
+
+                    FloorCeiling floor = default, ceiling = default;
+
+                    var hasFloor = room.Floor != Entity.Null;
+                    var hasCeiling = room.Ceiling != Entity.Null;
+
+                    if (hasFloor)
+                    {
+                        floor = getFloorCeiling[room.Floor];
+                    }
+
+                    if (hasCeiling)
+                    {
+                        ceiling = getFloorCeiling[room.Ceiling];
+                    }
 
                     meshData.VertexOffset = 0;
                     meshData.IndexOffset = 0;
@@ -236,11 +195,11 @@ namespace LevelBuilderVR.Systems
 
                         if (hasFloor && hasCeiling)
                         {
-                            var floor0 = VertexToFloat3(in floor, vertex0);
-                            var floor1 = VertexToFloat3(in floor, vertex1);
+                            var floor0 = VertexToFloat3(in floor.Plane, vertex0);
+                            var floor1 = VertexToFloat3(in floor.Plane, vertex1);
 
-                            var ceiling0 = VertexToFloat3(in ceiling, vertex0);
-                            var ceiling1 = VertexToFloat3(in ceiling, vertex1);
+                            var ceiling0 = VertexToFloat3(in ceiling.Plane, vertex0);
+                            var ceiling1 = VertexToFloat3(in ceiling.Plane, vertex1);
 
                             halfEdge.MinY = math.min(floor0.y, ceiling0.y);
                             halfEdge.MaxY = math.max(floor0.y, ceiling0.y);
@@ -248,19 +207,24 @@ namespace LevelBuilderVR.Systems
                             if (halfEdge.BackFace != Entity.Null)
                             {
                                 var backFace = getHalfEdge[halfEdge.BackFace];
+                                var backRoom = getRoom[backFace.Room];
 
-                                if (GetFacePlane(backFace.Room, getVertex, getFlatFloor, getSlopedFloor, out var backFloor))
+                                if (backRoom.Floor != Entity.Null)
                                 {
-                                    var backFloor0 = VertexToFloat3(in backFloor, vertex0);
-                                    var backFloor1 = VertexToFloat3(in backFloor, vertex1);
+                                    var backFloor = getFloorCeiling[backRoom.Floor];
+
+                                    var backFloor0 = VertexToFloat3(in backFloor.Plane, vertex0);
+                                    var backFloor1 = VertexToFloat3(in backFloor.Plane, vertex1);
 
                                     MeshWall(ref meshData, in floor0, in floor1, in backFloor0, in backFloor1, in normal, u0, u1);
                                 }
 
-                                if (GetFacePlane(backFace.Room, getVertex, getFlatCeiling, getSlopedCeiling, out var backCeiling))
+                                if (backRoom.Ceiling != Entity.Null)
                                 {
-                                    var backCeiling0 = VertexToFloat3(in backCeiling, vertex0);
-                                    var backCeiling1 = VertexToFloat3(in backCeiling, vertex1);
+                                    var backCeiling = getFloorCeiling[backRoom.Ceiling];
+
+                                    var backCeiling0 = VertexToFloat3(in backCeiling.Plane, vertex0);
+                                    var backCeiling1 = VertexToFloat3(in backCeiling.Plane, vertex1);
 
                                     MeshWall(ref meshData, in backCeiling0, in backCeiling1, in ceiling0, in ceiling1, in normal, u0, u1);
                                 }
@@ -272,11 +236,11 @@ namespace LevelBuilderVR.Systems
                         }
                         else if (hasFloor)
                         {
-                            halfEdge.MinY = halfEdge.MaxY = VertexToFloat3(in floor, vertex0).y;
+                            halfEdge.MinY = halfEdge.MaxY = VertexToFloat3(in floor.Plane, vertex0).y;
                         }
                         else if (hasCeiling)
                         {
-                            halfEdge.MinY = halfEdge.MaxY = VertexToFloat3(in ceiling, vertex0).y;
+                            halfEdge.MinY = halfEdge.MaxY = VertexToFloat3(in ceiling.Plane, vertex0).y;
                         }
 
                         getHalfEdgeWritable[halfEdgeEntity] = halfEdge;
@@ -300,16 +264,16 @@ namespace LevelBuilderVR.Systems
                             if (hasFloor)
                             {
                                 int floorIndex;
-                                meshData.Vertices[floorIndex = meshData.VertexOffset++] = VertexToFloat3(in floor, vertex);
-                                meshData.Normals[floorIndex] = floor.Normal;
+                                meshData.Vertices[floorIndex = meshData.VertexOffset++] = VertexToFloat3(in floor.Plane, vertex);
+                                meshData.Normals[floorIndex] = floor.Plane.Normal;
                                 meshData.Uvs[floorIndex] = new float2(vertex.X, vertex.Z);
                             }
 
                             if (hasCeiling)
                             {
                                 int ceilingIndex;
-                                meshData.Vertices[ceilingIndex = meshData.VertexOffset++] = VertexToFloat3(in ceiling, vertex);
-                                meshData.Normals[ceilingIndex] = -ceiling.Normal;
+                                meshData.Vertices[ceilingIndex = meshData.VertexOffset++] = VertexToFloat3(in ceiling.Plane, vertex);
+                                meshData.Normals[ceilingIndex] = -ceiling.Plane.Normal;
                                 meshData.Uvs[ceilingIndex] = new float2(vertex.X, vertex.Z);
                             }
 

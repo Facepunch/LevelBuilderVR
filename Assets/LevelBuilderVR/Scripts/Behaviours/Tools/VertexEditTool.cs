@@ -11,53 +11,14 @@ namespace LevelBuilderVR.Behaviours.Tools
 {
     public class VertexEditTool : Tool
     {
-        private struct Face : IEquatable<Face>
-        {
-            public static bool operator ==(Face a, Face b)
-            {
-                return a.Room == b.Room && a.Kind == b.Kind;
-            }
-            public static bool operator !=(Face a, Face b)
-            {
-                return a.Room != b.Room || a.Kind != b.Kind;
-            }
-
-            public readonly Entity Room;
-            public readonly FaceKind Kind;
-
-            public Face(Entity room, FaceKind kind)
-            {
-                Room = room;
-                Kind = kind;
-            }
-
-            public bool Equals(Face other)
-            {
-                return Room.Equals(other.Room) && Kind == other.Kind;
-            }
-
-            public override bool Equals(object obj)
-            {
-                return obj is Face other && Equals(other);
-            }
-
-            public override int GetHashCode()
-            {
-                unchecked
-                {
-                    return (Room.GetHashCode() * 397) ^ (int) Kind;
-                }
-            }
-        }
-
         private struct HandState
         {
             public Entity HoveredVertex;
             public Entity HoveredHalfEdge;
-            public Face HoveredFace;
+            public Entity HoveredFloorCeiling;
             public bool IsActionHeld;
             public bool IsDragging;
-            public bool IsDraggingFace;
+            public bool IsDraggingFloorCeiling;
             public bool IsDeselecting;
             public float3 DragOrigin;
             public float3 DragApplied;
@@ -227,20 +188,22 @@ namespace LevelBuilderVR.Behaviours.Tools
                 }
             }
 
-            Face newHoveredFace = default;
-
             // Floor / ceiling widget
+            var newHoveredFloorCeiling = Entity.Null;
             if (!state.IsActionHeld && EntityManager.FindClosestFloorCeiling(Level, localHandPos,
-                out var newHoveredRoom, out var newHoveredFaceKind, out hoverPos))
+                out newHoveredFloorCeiling, out hoverPos))
             {
                 var hoverWorldPos = math.transform(localToWorld, hoverPos);
                 var dist2 = math.distancesq(hoverWorldPos, handPos);
 
-                if (dist2 <= interactDist2 && dist2 < newHoveredVertexDist2 && dist2 < newHoveredHalfEdgeDist2)
+                if (dist2 > interactDist2 || dist2 > newHoveredVertexDist2 || dist2 > newHoveredHalfEdgeDist2)
+                {
+                    newHoveredFloorCeiling = Entity.Null;
+                }
+                else
                 {
                     newHoveredVertex = Entity.Null;
                     newHoveredHalfEdge = Entity.Null;
-                    newHoveredFace = new Face(newHoveredRoom, newHoveredFaceKind);
 
                     HybridLevel.ExtrudeWidget.transform.position = hoverWorldPos;
 
@@ -248,7 +211,7 @@ namespace LevelBuilderVR.Behaviours.Tools
                 }
             }
 
-            if (state.HoveredVertex == newHoveredVertex && state.HoveredHalfEdge == newHoveredHalfEdge && state.HoveredFace == newHoveredFace)
+            if (state.HoveredVertex == newHoveredVertex && state.HoveredHalfEdge == newHoveredHalfEdge && state.HoveredFloorCeiling == newHoveredFloorCeiling)
             {
                 return true;
             }
@@ -276,10 +239,10 @@ namespace LevelBuilderVR.Behaviours.Tools
                 state.HoveredHalfEdge = newHoveredHalfEdge;
             }
 
-            if (state.HoveredFace != newHoveredFace)
+            if (state.HoveredFloorCeiling != newHoveredFloorCeiling)
             {
-                HybridLevel.ExtrudeWidget.gameObject.SetActive(newHoveredFace.Room != Entity.Null);
-                state.HoveredFace = newHoveredFace;
+                HybridLevel.ExtrudeWidget.gameObject.SetActive(newHoveredFloorCeiling != Entity.Null);
+                state.HoveredFloorCeiling = newHoveredFloorCeiling;
             }
 
             return true;
@@ -378,7 +341,7 @@ namespace LevelBuilderVR.Behaviours.Tools
             }
 
             state.IsDragging = true;
-            state.IsDraggingFace = state.HoveredFace.Room != Entity.Null;
+            state.IsDraggingFloorCeiling = state.HoveredFloorCeiling != Entity.Null;
             state.DragOrigin = handPos;
             state.DragApplied = float3.zero;
 
@@ -426,7 +389,7 @@ namespace LevelBuilderVR.Behaviours.Tools
 
             var intOffset = new int3(math.round(offset / GridSnap));
 
-            if (state.IsDraggingFace)
+            if (state.IsDraggingFloorCeiling)
             {
                 intOffset.x = 0;
                 intOffset.z = 0;
@@ -446,35 +409,21 @@ namespace LevelBuilderVR.Behaviours.Tools
             state.DragApplied += offset;
             HybridLevel.SetDragOffset(-state.DragApplied);
 
-            if (state.IsDraggingFace)
+            if (state.IsDraggingFloorCeiling)
             {
-                switch (state.HoveredFace.Kind)
+                var floorCeiling = EntityManager.GetComponentData<FloorCeiling>(state.HoveredFloorCeiling);
+                floorCeiling.Plane.Point.y += offset.y;
+                EntityManager.SetComponentData(state.HoveredFloorCeiling, floorCeiling);
+
+                if (floorCeiling.Above != Entity.Null)
                 {
-                    case FaceKind.Floor:
-                    {
-                        if (EntityManager.HasComponent<FlatFloor>(state.HoveredFace.Room))
-                        {
-                            var flatFloor = EntityManager.GetComponentData<FlatFloor>(state.HoveredFace.Room);
-                            flatFloor.Y += offset.y;
-                            EntityManager.SetComponentData(state.HoveredFace.Room, flatFloor);
-                        }
-
-                        break;
-                    }
-                    case FaceKind.Ceiling:
-                    {
-                        if (EntityManager.HasComponent<FlatCeiling>(state.HoveredFace.Room))
-                        {
-                            var flatCeiling = EntityManager.GetComponentData<FlatCeiling>(state.HoveredFace.Room);
-                            flatCeiling.Y += offset.y;
-                            EntityManager.SetComponentData(state.HoveredFace.Room, flatCeiling);
-                        }
-
-                        break;
-                    }
+                    EntityManager.AddComponent<DirtyMesh>(floorCeiling.Above);
                 }
 
-                EntityManager.AddComponent<DirtyMesh>(state.HoveredFace.Room);
+                if (floorCeiling.Below != Entity.Null)
+                {
+                    EntityManager.AddComponent<DirtyMesh>(floorCeiling.Below);
+                }
             }
             else
             {
