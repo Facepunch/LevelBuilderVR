@@ -32,12 +32,12 @@ namespace LevelBuilderVR
 
         public static void ResetCrosshairTexture(this Hand hand)
         {
-            hand.GetComponentInChildren<Crosshair>().ResetTexture();
+            hand.GetComponentInChildren<Crosshair>()?.ResetTexture();
         }
 
         public static void SetCrosshairTexture(this Hand hand, Texture2D texture)
         {
-            hand.GetComponentInChildren<Crosshair>().SetTexture(texture);
+            hand.GetComponentInChildren<Crosshair>()?.SetTexture(texture);
         }
 
         public static float Cross(float2 a, float2 b)

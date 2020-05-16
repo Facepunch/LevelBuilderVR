@@ -54,6 +54,7 @@ namespace LevelBuilderVR.Behaviours.Tools
         protected override void OnDeselected()
         {
             EntityManager.SetComponentData(Level, default(WidgetsVisible));
+            HybridLevel.ExtrudeWidget.gameObject.SetActive(false);
 
             ResetState(ref _state);
         }

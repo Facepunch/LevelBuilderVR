@@ -14,82 +14,148 @@ namespace LevelBuilderVR.Systems
     {
         private HybridLevel _hybridLevel;
 
-        private EntityQuery _getNonRenderableVertices;
         private EntityQuery _getRenderableVertices;
+        private EntityQuery _getNonRenderableVertices;
         private EntityQuery _getHiddenVertices;
+        private EntityQuery _getRenderableFloorCeilings;
+        private EntityQuery _getNonRenderableFloorCeilings;
+        private EntityQuery _getHiddenFloorCeilings;
+
+        private void CreateQueries<T>(out EntityQuery renderable, out EntityQuery nonRenderable, out EntityQuery hidden)
+            where T : IComponentData
+        {
+            hidden = Entities
+                .WithAllReadOnly<T, WithinLevel, RenderMesh>()
+                .WithAllReadOnly<Hidden>()
+                .ToEntityQuery();
+
+            nonRenderable = Entities
+                .WithAllReadOnly<T, WithinLevel>()
+                .WithNone<RenderMesh, Hidden>()
+                .ToEntityQuery();
+
+            renderable = Entities
+                .WithAllReadOnly<T, WithinLevel, RenderMesh>()
+                .ToEntityQuery();
+        }
 
         protected override void OnCreate()
         {
-            _getNonRenderableVertices = Entities
-                .WithAllReadOnly<Vertex, WithinLevel>()
-                .WithNone<RenderMesh, LocalToWorld, RenderBounds, Hidden>()
-                .ToEntityQuery();
+            CreateQueries<Vertex>(
+                out _getRenderableVertices,
+                out _getNonRenderableVertices,
+                out _getHiddenVertices);
+            CreateQueries<FloorCeiling>(
+                out _getRenderableFloorCeilings,
+                out _getNonRenderableFloorCeilings,
+                out _getHiddenFloorCeilings);
+        }
 
-            _getRenderableVertices = Entities
-                .WithAllReadOnly<Vertex, WithinLevel, RenderMesh, LocalToWorld, RenderBounds>()
-                .ToEntityQuery();
+        private void UpdateWidgets(bool visible, Mesh defaultMesh, Material defaultMaterial,
+            ref EntityQuery renderable, ref EntityQuery nonRenderable, ref EntityQuery hidden)
+        {
+            var toHideQuery = renderable;
+            var withinLevel = EntityManager.GetWithinLevel(_hybridLevel.Level);
 
-            _getHiddenVertices = Entities
-                .WithAllReadOnly<Vertex, WithinLevel, RenderMesh, LocalToWorld, RenderBounds>()
-                .WithAllReadOnly<Hidden>()
-                .ToEntityQuery();
+            if (visible)
+            {
+                toHideQuery = hidden;
+
+                nonRenderable.SetSharedComponentFilter(withinLevel);
+
+                var renderMesh = new RenderMesh
+                {
+                    mesh = defaultMesh,
+                    material = defaultMaterial,
+                    castShadows = ShadowCastingMode.Off,
+                    receiveShadows = false
+                };
+
+                PostUpdateCommands.AddComponent<LocalToWorld>(nonRenderable);
+                PostUpdateCommands.AddComponent<RenderBounds>(nonRenderable);
+                PostUpdateCommands.AddComponent<DirtyMaterial>(nonRenderable);
+
+                if (defaultMesh == null)
+                {
+                    var entities = nonRenderable.ToEntityArray(Allocator.TempJob);
+
+                    foreach (var entity in entities)
+                    {
+                        renderMesh.mesh = new Mesh();
+                        renderMesh.mesh.MarkDynamic();
+
+                        PostUpdateCommands.AddSharedComponent(entity, renderMesh);
+                    }
+
+                    entities.Dispose();
+                }
+                else
+                {
+                    PostUpdateCommands.AddSharedComponent(nonRenderable, renderMesh);
+                }
+            }
+
+            toHideQuery.SetSharedComponentFilter(withinLevel);
+
+            if (defaultMesh == null)
+            {
+                var entities = toHideQuery.ToEntityArray(Allocator.TempJob);
+
+                foreach (var entity in entities)
+                {
+                    var renderMesh = EntityManager.GetSharedComponentData<RenderMesh>(entity);
+
+                    if (renderMesh.mesh != null)
+                    {
+                        Object.Destroy(renderMesh.mesh);
+                    }
+                }
+
+                entities.Dispose();
+            }
+
+            PostUpdateCommands.RemoveComponent<LocalToWorld>(toHideQuery);
+            PostUpdateCommands.RemoveComponent<RenderBounds>(toHideQuery);
+            PostUpdateCommands.RemoveComponent<RenderMesh>(toHideQuery);
         }
 
         protected override void OnUpdate()
         {
-            var hybridLevel = _hybridLevel ?? (_hybridLevel = Object.FindObjectOfType<HybridLevel>());
+            if (_hybridLevel == null)
+            {
+                _hybridLevel = Object.FindObjectOfType<HybridLevel>();
+            }
 
             Entities
                 .WithAllReadOnly<Level, WidgetsVisible>()
                 .ForEach((Entity levelEntity, ref WidgetsVisible widgetsVisible) =>
-                {
-                    var toHideQuery = _getRenderableVertices;
-                    var withinLevel = EntityManager.GetWithinLevel(levelEntity);
-
-                    NativeArray<Entity> entities;
-
-                    if (widgetsVisible.Vertex)
                     {
-                        toHideQuery = _getHiddenVertices;
+                        UpdateWidgets(widgetsVisible.Vertex, _hybridLevel.VertexWidgetMesh, _hybridLevel.VertexWidgetBaseMaterial,
+                            ref _getRenderableVertices, ref _getNonRenderableVertices, ref _getHiddenVertices);
+                        UpdateWidgets(widgetsVisible.FloorCeiling, null, _hybridLevel.FloorCeilingWidgetBaseMaterial,
+                            ref _getRenderableFloorCeilings, ref _getNonRenderableFloorCeilings, ref _getHiddenFloorCeilings);
 
-                        _getNonRenderableVertices.SetSharedComponentFilter(withinLevel);
-                        entities = _getNonRenderableVertices.ToEntityArray(Allocator.TempJob);
-
-                        var renderMesh = new RenderMesh
+                        if (widgetsVisible.FloorCeiling)
                         {
-                            mesh = hybridLevel.VertexWidgetMesh,
-                            material = hybridLevel.VertexWidgetBaseMaterial,
-                            castShadows = ShadowCastingMode.Off,
-                            receiveShadows = false
-                        };
+                            _getNonRenderableFloorCeilings.SetSharedComponentFilter(EntityManager.GetWithinLevel(levelEntity));
+                            var floorCeilings = _getNonRenderableFloorCeilings.ToComponentDataArray<FloorCeiling>(Allocator.TempJob);
 
-                        for (var i = 0; i < entities.Length; ++i)
-                        {
-                            var entity = entities[i];
+                            foreach (var floorCeiling in floorCeilings)
+                            {
+                                if (floorCeiling.Above != Entity.Null)
+                                {
+                                    PostUpdateCommands.AddComponent<DirtyMesh>(floorCeiling.Above);
+                                }
 
-                            PostUpdateCommands.AddSharedComponent(entity, renderMesh);
-                            PostUpdateCommands.AddComponent<LocalToWorld>(entity);
-                            PostUpdateCommands.AddComponent<RenderBounds>(entity);
-                            PostUpdateCommands.AddComponent<DirtyMaterial>(entity);
+                                if (floorCeiling.Below != Entity.Null)
+                                {
+                                    PostUpdateCommands.AddComponent<DirtyMesh>(floorCeiling.Below);
+                                }
+                            }
+
+                            floorCeilings.Dispose();
                         }
-
-                        entities.Dispose();
-                    }
-
-                    toHideQuery.SetSharedComponentFilter(withinLevel);
-                    entities = toHideQuery.ToEntityArray(Allocator.TempJob);
-
-                    for (var i = 0; i < entities.Length; ++i)
-                    {
-                        var entity = entities[i];
-
-                        PostUpdateCommands.RemoveComponent<RenderMesh>(entity);
-                        PostUpdateCommands.RemoveComponent<LocalToWorld>(entity);
-                        PostUpdateCommands.RemoveComponent<RenderBounds>(entity);
-                    }
-
-                    entities.Dispose();
-                });
+                    });
         }
     }
 }

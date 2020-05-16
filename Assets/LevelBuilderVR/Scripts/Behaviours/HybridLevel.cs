@@ -21,6 +21,8 @@ namespace LevelBuilderVR.Behaviours
         public Mesh VertexWidgetMesh;
         public Material VertexWidgetBaseMaterial;
 
+        public Material FloorCeilingWidgetBaseMaterial;
+
         public Transform ExtrudeWidget;
 
         [HideInInspector]

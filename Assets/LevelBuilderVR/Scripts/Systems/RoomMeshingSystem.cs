@@ -15,11 +15,10 @@ namespace LevelBuilderVR.Systems
         private const int MaxVertices = 1024;
         private const int MaxIndices = MaxVertices * 4;
 
-        private static readonly int[] _sEmptyIndices = new int[0];
-
         private EntityQuery _changedRoomsQuery;
         private EntityQuery _halfEdgesQuery;
         private EntityQuery _roomsQuery;
+        private EntityQuery _floorCeilingsQuery;
 
         protected override void OnCreate()
         {
@@ -36,6 +35,11 @@ namespace LevelBuilderVR.Systems
                 .WithAllReadOnly<Room, RenderMesh, WithinLevel>()
                 .WithAll<LocalToWorld, RenderBounds>()
                 .ToEntityQuery();
+
+            _floorCeilingsQuery = Entities
+                .WithAllReadOnly<FloorCeiling, RenderMesh, WithinLevel>()
+                .WithAll<LocalToWorld, RenderBounds>()
+                .ToEntityQuery();
         }
 
         private static float3 VertexToFloat3(in Plane plane, Vertex vertex)
@@ -47,36 +51,6 @@ namespace LevelBuilderVR.Systems
             }
 
             return plane.ProjectOnto(new float3(vertex.X, 0f, vertex.Z), new float3(0f, 1f, 0f));
-        }
-
-        private struct MeshData : IDisposable
-        {
-            public NativeArray<float3> Vertices;
-            public NativeArray<float3> Normals;
-            public NativeArray<float2> Uvs;
-            public NativeArray<int> Indices;
-
-            public int VertexOffset;
-            public int IndexOffset;
-
-            public MeshData(int maxVertices, int maxIndices)
-            {
-                Vertices = new NativeArray<float3>(maxVertices, Allocator.TempJob);
-                Normals = new NativeArray<float3>(maxVertices, Allocator.TempJob);
-                Uvs = new NativeArray<float2>(maxVertices, Allocator.TempJob);
-                Indices = new NativeArray<int>(maxIndices, Allocator.TempJob);
-
-                VertexOffset = 0;
-                IndexOffset = 0;
-            }
-
-            public void Dispose()
-            {
-                Vertices.Dispose();
-                Normals.Dispose();
-                Uvs.Dispose();
-                Indices.Dispose();
-            }
         }
 
         private static void MeshWall(ref MeshData meshData,
@@ -91,33 +65,13 @@ namespace LevelBuilderVR.Systems
 
             // TODO: (floor0.y >= ceiling0.y) != (floor1.y >= ceiling1.y)
 
-            int wall0, wall1, wall2, wall3;
+            var wall0 = meshData.AddVertex(floor0, normal, new float2(u0, floor0.y));
+            var wall1 = meshData.AddVertex(floor1, normal, new float2(u1, floor1.y));
+            var wall2 = meshData.AddVertex(ceiling0, normal, new float2(u0, ceiling0.y));
+            var wall3 = meshData.AddVertex(ceiling1, normal, new float2(u1, ceiling1.y));
 
-            meshData.Vertices[wall0 = meshData.VertexOffset++] = floor0;
-            meshData.Vertices[wall1 = meshData.VertexOffset++] = floor1;
-
-            meshData.Normals[wall0] = normal;
-            meshData.Normals[wall1] = normal;
-
-            meshData.Uvs[wall0] = new float2(u0, floor0.y);
-            meshData.Uvs[wall1] = new float2(u1, floor1.y);
-
-            meshData.Vertices[wall2 = meshData.VertexOffset++] = ceiling0;
-            meshData.Vertices[wall3 = meshData.VertexOffset++] = ceiling1;
-
-            meshData.Normals[wall2] = normal;
-            meshData.Normals[wall3] = normal;
-
-            meshData.Uvs[wall2] = new float2(u0, ceiling0.y);
-            meshData.Uvs[wall3] = new float2(u1, ceiling1.y);
-
-            meshData.Indices[meshData.IndexOffset++] = wall0;
-            meshData.Indices[meshData.IndexOffset++] = wall2;
-            meshData.Indices[meshData.IndexOffset++] = wall1;
-
-            meshData.Indices[meshData.IndexOffset++] = wall2;
-            meshData.Indices[meshData.IndexOffset++] = wall3;
-            meshData.Indices[meshData.IndexOffset++] = wall1;
+            meshData.AddTriangle(wall0, wall2, wall1);
+            meshData.AddTriangle(wall2, wall3, wall1);
         }
 
         protected override void OnUpdate()
@@ -139,7 +93,8 @@ namespace LevelBuilderVR.Systems
                     anyChangedRooms = true;
                 }
 
-                var meshData = new MeshData(MaxVertices, MaxIndices);
+                var roomMeshData = new MeshData(MaxVertices, MaxIndices);
+                var floorCeilingMeshData = new MeshData(MaxVertices, MaxIndices);
 
                 foreach (var roomEntity in changedRooms)
                 {
@@ -162,8 +117,8 @@ namespace LevelBuilderVR.Systems
                         ceiling = getFloorCeiling[room.Ceiling];
                     }
 
-                    meshData.VertexOffset = 0;
-                    meshData.IndexOffset = 0;
+                    roomMeshData.VertexOffset = 0;
+                    roomMeshData.IndexOffset = 0;
 
                     var firstHalfEdgeEntity = Entity.Null;
                     var halfEdgeCount = 0;
@@ -216,7 +171,7 @@ namespace LevelBuilderVR.Systems
                                     var backFloor0 = VertexToFloat3(in backFloor.Plane, vertex0);
                                     var backFloor1 = VertexToFloat3(in backFloor.Plane, vertex1);
 
-                                    MeshWall(ref meshData, in floor0, in floor1, in backFloor0, in backFloor1, in normal, u0, u1);
+                                    MeshWall(ref roomMeshData, in floor0, in floor1, in backFloor0, in backFloor1, in normal, u0, u1);
                                 }
 
                                 if (backRoom.Ceiling != Entity.Null)
@@ -226,12 +181,12 @@ namespace LevelBuilderVR.Systems
                                     var backCeiling0 = VertexToFloat3(in backCeiling.Plane, vertex0);
                                     var backCeiling1 = VertexToFloat3(in backCeiling.Plane, vertex1);
 
-                                    MeshWall(ref meshData, in backCeiling0, in backCeiling1, in ceiling0, in ceiling1, in normal, u0, u1);
+                                    MeshWall(ref roomMeshData, in backCeiling0, in backCeiling1, in ceiling0, in ceiling1, in normal, u0, u1);
                                 }
                             }
                             else
                             {
-                                MeshWall(ref meshData, in floor0, in floor1, in ceiling0, in ceiling1, in normal, u0, u1);
+                                MeshWall(ref roomMeshData, in floor0, in floor1, in ceiling0, in ceiling1, in normal, u0, u1);
                             }
                         }
                         else if (hasFloor)
@@ -251,9 +206,12 @@ namespace LevelBuilderVR.Systems
                         var roomVertices = new NativeArray<float2>(halfEdgeCount, Allocator.TempJob);
                         var roomVertexIndex = 0;
 
-                        var firstFloorOffset = meshData.VertexOffset;
-                        var firstCeilingOffset = meshData.VertexOffset + (hasFloor ? 1 : 0);
-                        var floorCeilingStride = (hasFloor ? 1 : 0) + (hasCeiling ? 1 : 0);
+                        var renderFloor = hasFloor && floor.Below == Entity.Null;
+                        var renderCeiling = hasCeiling && ceiling.Above == Entity.Null;
+
+                        var firstFloorOffset = roomMeshData.VertexOffset;
+                        var firstCeilingOffset = roomMeshData.VertexOffset + (renderFloor ? 1 : 0);
+                        var floorCeilingStride = (renderFloor ? 1 : 0) + (renderCeiling ? 1 : 0);
 
                         var curHalfEdgeEntity = firstHalfEdgeEntity;
                         do
@@ -261,20 +219,20 @@ namespace LevelBuilderVR.Systems
                             var halfEdge = getHalfEdge[curHalfEdgeEntity];
                             var vertex = getVertex[halfEdge.Vertex];
 
-                            if (hasFloor)
+                            if (renderFloor)
                             {
-                                int floorIndex;
-                                meshData.Vertices[floorIndex = meshData.VertexOffset++] = VertexToFloat3(in floor.Plane, vertex);
-                                meshData.Normals[floorIndex] = floor.Plane.Normal;
-                                meshData.Uvs[floorIndex] = new float2(vertex.X, vertex.Z);
+                                roomMeshData.AddVertex(
+                                    VertexToFloat3(in floor.Plane, vertex),
+                                    floor.Plane.Normal,
+                                    new float2(vertex.X, vertex.Z));
                             }
 
-                            if (hasCeiling)
+                            if (renderCeiling)
                             {
-                                int ceilingIndex;
-                                meshData.Vertices[ceilingIndex = meshData.VertexOffset++] = VertexToFloat3(in ceiling.Plane, vertex);
-                                meshData.Normals[ceilingIndex] = -ceiling.Plane.Normal;
-                                meshData.Uvs[ceilingIndex] = new float2(vertex.X, vertex.Z);
+                                roomMeshData.AddVertex(
+                                    VertexToFloat3(in ceiling.Plane, vertex),
+                                    -ceiling.Plane.Normal,
+                                    new float2(vertex.X, vertex.Z));
                             }
 
                             roomVertices[roomVertexIndex++] = new float2(vertex.X, vertex.Z);
@@ -286,37 +244,76 @@ namespace LevelBuilderVR.Systems
 
                         Helpers.Triangulate(roomVertices, triangulationIndices, out var triangulationIndexCount);
 
-                        if (hasFloor)
+                        if (renderFloor)
                         {
                             for (var i = 0; i < triangulationIndexCount; ++i)
                             {
-                                meshData.Indices[meshData.IndexOffset++] = firstFloorOffset + triangulationIndices[i] * floorCeilingStride;
+                                roomMeshData.Indices[roomMeshData.IndexOffset++] = firstFloorOffset + triangulationIndices[i] * floorCeilingStride;
                             }
                         }
 
-                        if (hasCeiling)
+                        if (renderCeiling)
                         {
                             for (var i = triangulationIndexCount - 1; i >= 0; --i)
                             {
-                                meshData.Indices[meshData.IndexOffset++] = firstCeilingOffset + triangulationIndices[i] * floorCeilingStride;
+                                roomMeshData.Indices[roomMeshData.IndexOffset++] = firstCeilingOffset + triangulationIndices[i] * floorCeilingStride;
                             }
+                        }
+
+                        if (hasFloor && EntityManager.HasComponent<RenderMesh>(room.Floor))
+                        {
+                            floorCeilingMeshData.IndexOffset = 0;
+                            floorCeilingMeshData.VertexOffset = 0;
+
+                            for (var i = 0; i < halfEdgeCount; ++i)
+                            {
+                                var pos = roomVertices[i];
+
+                                floorCeilingMeshData.AddVertex(
+                                    VertexToFloat3(in floor.Plane, new Vertex { X = pos.x, Z = pos.y }),
+                                    floor.Plane.Normal, pos);
+                            }
+
+                            for (var i = 0; i < triangulationIndexCount; ++i)
+                            {
+                                floorCeilingMeshData.Indices[floorCeilingMeshData.IndexOffset++] = triangulationIndices[i];
+                            }
+
+                            floorCeilingMeshData.CopyToMesh(EntityManager.GetSharedComponentData<RenderMesh>(room.Floor).mesh);
+                        }
+
+                        // Don't need to update the ceiling mesh if the room above would do it (as a floor)
+                        if (hasCeiling && EntityManager.HasComponent<RenderMesh>(room.Ceiling) && ceiling.Above == Entity.Null)
+                        {
+                            floorCeilingMeshData.IndexOffset = 0;
+                            floorCeilingMeshData.VertexOffset = 0;
+
+                            for (var i = 0; i < halfEdgeCount; ++i)
+                            {
+                                var pos = roomVertices[i];
+
+                                floorCeilingMeshData.AddVertex(
+                                    VertexToFloat3(in ceiling.Plane, new Vertex { X = pos.x, Z = pos.y }),
+                                    ceiling.Plane.Normal, pos);
+                            }
+
+                            for (var i = 0; i < triangulationIndexCount; ++i)
+                            {
+                                floorCeilingMeshData.Indices[floorCeilingMeshData.IndexOffset++] = triangulationIndices[i];
+                            }
+
+                            floorCeilingMeshData.CopyToMesh(EntityManager.GetSharedComponentData<RenderMesh>(room.Ceiling).mesh);
                         }
 
                         triangulationIndices.Dispose();
                         roomVertices.Dispose();
                     }
 
-                    var renderMesh = EntityManager.GetSharedComponentData<RenderMesh>(roomEntity);
-
-                    renderMesh.mesh.SetIndices(_sEmptyIndices, MeshTopology.Triangles, 0);
-                    renderMesh.mesh.SetVertices(meshData.Vertices, 0, meshData.VertexOffset);
-                    renderMesh.mesh.SetNormals(meshData.Normals, 0, meshData.VertexOffset);
-                    renderMesh.mesh.SetUVs(0, meshData.Uvs, 0, meshData.VertexOffset);
-                    renderMesh.mesh.SetIndices(meshData.Indices, 0, meshData.IndexOffset,
-                        MeshTopology.Triangles, 0);
+                    roomMeshData.CopyToMesh(EntityManager.GetSharedComponentData<RenderMesh>(roomEntity).mesh);
                 }
 
-                meshData.Dispose();
+                roomMeshData.Dispose();
+                floorCeilingMeshData.Dispose();
             }
 
             if (anyChangedRooms)
@@ -351,8 +348,9 @@ namespace LevelBuilderVR.Systems
                 .ForEach(level =>
                 {
                     var levelLocalToWorld = getLocalToWorld[level];
+                    var withinLevel = EntityManager.GetWithinLevel(level);
 
-                    _roomsQuery.SetSharedComponentFilter(EntityManager.GetWithinLevel(level));
+                    _roomsQuery.SetSharedComponentFilter(withinLevel);
 
                     var rooms = _roomsQuery.ToEntityArray(Allocator.TempJob);
                     var localToWorlds = _roomsQuery.ToComponentDataArray<LocalToWorld>(Allocator.TempJob);
@@ -377,6 +375,34 @@ namespace LevelBuilderVR.Systems
                     _roomsQuery.CopyFromComponentDataArray(renderBoundses);
 
                     rooms.Dispose();
+                    localToWorlds.Dispose();
+                    renderBoundses.Dispose();
+
+                    _floorCeilingsQuery.SetSharedComponentFilter(withinLevel);
+
+                    var floorCeilings = _floorCeilingsQuery.ToEntityArray(Allocator.TempJob);
+                    localToWorlds = _floorCeilingsQuery.ToComponentDataArray<LocalToWorld>(Allocator.TempJob);
+                    renderBoundses = _floorCeilingsQuery.ToComponentDataArray<RenderBounds>(Allocator.TempJob);
+
+                    for (var i = 0; i < floorCeilings.Length; ++i)
+                    {
+                        var renderMesh = EntityManager.GetSharedComponentData<RenderMesh>(floorCeilings[i]);
+
+                        localToWorlds[i] = levelLocalToWorld;
+                        renderBoundses[i] = new RenderBounds
+                        {
+                            Value = new AABB
+                            {
+                                Center = renderMesh.mesh?.bounds.center ?? float3.zero,
+                                Extents = renderMesh.mesh?.bounds.extents ?? float3.zero
+                            }
+                        };
+                    }
+
+                    _floorCeilingsQuery.CopyFromComponentDataArray(localToWorlds);
+                    _floorCeilingsQuery.CopyFromComponentDataArray(renderBoundses);
+
+                    floorCeilings.Dispose();
                     localToWorlds.Dispose();
                     renderBoundses.Dispose();
                 });
