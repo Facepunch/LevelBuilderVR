@@ -1227,7 +1227,7 @@ MonoBehaviour:
     type: 3}
   VertexWidgetBaseMaterial: {fileID: 2100000, guid: 16469bd2c8164f949b69a8ca531d74e7,
     type: 2}
-  FloorCeilingWidgetBaseMaterial: {fileID: 2100000, guid: 58879fb59e8f64b4182062d9b98c5408,
+  FloorCeilingWidgetBaseMaterial: {fileID: 2100000, guid: aa2994a7cf4653e4a87de403eb519d2f,
     type: 2}
   ExtrudeWidget: {fileID: 1739482963}
   VertexWidgetHoverMaterial: {fileID: 2100000, guid: 03dbfe5b12bc14145978c603588e58ed,

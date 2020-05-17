@@ -19,11 +19,8 @@ namespace LevelBuilderVR.Behaviours
         public Color HoverSelectedTint = new Color(1f, 0.675f, 0.098f, 1f);
 
         public Mesh VertexWidgetMesh;
+
         public Material VertexWidgetBaseMaterial;
-
-        public Material FloorCeilingWidgetBaseMaterial;
-
-        public Transform ExtrudeWidget;
 
         [HideInInspector]
         public Material VertexWidgetHoverMaterial;
@@ -31,6 +28,17 @@ namespace LevelBuilderVR.Behaviours
         public Material VertexWidgetSelectedMaterial;
         [HideInInspector]
         public Material VertexWidgetHoverSelectedMaterial;
+
+        public Material FloorCeilingWidgetBaseMaterial;
+
+        [HideInInspector]
+        public Material FloorCeilingWidgetHoverMaterial;
+        [HideInInspector]
+        public Material FloorCeilingWidgetSelectedMaterial;
+        [HideInInspector]
+        public Material FloorCeilingWidgetHoverSelectedMaterial;
+
+        public Transform ExtrudeWidget;
 
         public string FilePath;
 
@@ -46,6 +54,15 @@ namespace LevelBuilderVR.Behaviours
 
             VertexWidgetHoverSelectedMaterial = Instantiate(VertexWidgetBaseMaterial);
             VertexWidgetHoverSelectedMaterial.SetColor("_Emission", HoverSelectedTint);
+
+            FloorCeilingWidgetHoverMaterial = Instantiate(FloorCeilingWidgetBaseMaterial);
+            FloorCeilingWidgetHoverMaterial.SetColor("_Emission", HoverTint);
+
+            FloorCeilingWidgetSelectedMaterial = Instantiate(FloorCeilingWidgetBaseMaterial);
+            FloorCeilingWidgetSelectedMaterial.SetColor("_Emission", SelectedTint);
+
+            FloorCeilingWidgetHoverSelectedMaterial = Instantiate(FloorCeilingWidgetBaseMaterial);
+            FloorCeilingWidgetHoverSelectedMaterial.SetColor("_Emission", HoverSelectedTint);
 
             SetDragOffset(Vector3.zero);
 

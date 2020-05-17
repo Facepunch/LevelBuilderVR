@@ -2,27 +2,33 @@
 {
     Properties
     {
+        _MainTex("Texture", 2D) = "white" {}
         _Color ("Color", Color) = (1,1,1,1)
         _Emission("Emission", Color) = (0,0,0,0)
         _Glossiness ("Smoothness", Range(0,1)) = 0.5
         _Metallic ("Metallic", Range(0,1)) = 0.0
+        _AlphaCutoff ("Alpha Cutoff", Float) = 0.5
     }
     SubShader
     {
-        Tags { "RenderType"="Opaque" "ForceNoShadowCasting"="True" }
+        Tags { "RenderType"="Opaque" "Queue"="AlphaTest" "ForceNoShadowCasting"="True" }
         LOD 200
+
+        Cull Off
 
         CGPROGRAM
         // Physically based Standard lighting model, and enable shadows on all light types
-        #pragma surface surf Standard
+        #pragma surface surf Standard alphatest:_AlphaCutoff
 
         // Use shader model 3.0 target, to get nicer looking lighting
         #pragma target 3.0
 
         struct Input
         {
-            float2 uv : TEXCOORD0;
+            float4 screenPos;
         };
+
+        sampler2D _MainTex;
 
         half _Glossiness;
         half _Metallic;
@@ -38,17 +44,20 @@
 
         void surf (Input IN, inout SurfaceOutputStandard o)
         {
-            clip((((IN.uv.x + IN.uv.z) * 128.0) % 2.0) - 1.0);
-
             fixed4 c = _Color;
             o.Albedo = c.rgb;
             o.Emission = _Emission;
-            // Metallic and smoothness come from slider variables
+
             o.Metallic = _Metallic;
             o.Smoothness = _Glossiness;
-            o.Alpha = c.a;
+
+            float3 normScreenPos = IN.screenPos.xyz / IN.screenPos.w;
+            float2 ditherCoord = normScreenPos.xy * _ScreenParams.xy;
+
+            o.Alpha = (int(ditherCoord.x) ^ int(ditherCoord.y)) & 1;
         }
         ENDCG
     }
+
     FallBack "Diffuse"
 }

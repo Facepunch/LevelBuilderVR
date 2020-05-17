@@ -10,64 +10,80 @@ namespace LevelBuilderVR.Systems
     {
         private HybridLevel _hybridLevel;
 
-        protected override void OnUpdate()
+        private void HandleMaterials<T>(Material baseMat, Material hoverMat, Material selectedMat, Material hoverSelectedMat)
+            where T : struct, IComponentData
         {
-            var hybridLevel = _hybridLevel ?? (_hybridLevel = Object.FindObjectOfType<HybridLevel>());
-
             Entities
-                .WithAllReadOnly<Vertex, Hovered, DirtyMaterial>()
+                .WithAllReadOnly<T, Hovered, DirtyMaterial>()
                 .WithNone<Selected>()
                 .WithAll<RenderMesh>()
                 .ForEach(entity =>
                 {
                     var renderMesh = EntityManager.GetSharedComponentData<RenderMesh>(entity);
 
-                    renderMesh.material = hybridLevel.VertexWidgetHoverMaterial;
+                    renderMesh.material = hoverMat;
 
                     PostUpdateCommands.SetSharedComponent(entity, renderMesh);
                     PostUpdateCommands.RemoveComponent<DirtyMaterial>(entity);
                 });
 
             Entities
-                .WithAllReadOnly<Vertex, Selected, DirtyMaterial>()
+                .WithAllReadOnly<T, Selected, DirtyMaterial>()
                 .WithNone<Hovered>()
                 .WithAll<RenderMesh>()
                 .ForEach(entity =>
                 {
                     var renderMesh = EntityManager.GetSharedComponentData<RenderMesh>(entity);
 
-                    renderMesh.material = hybridLevel.VertexWidgetSelectedMaterial;
+                    renderMesh.material = selectedMat;
 
                     PostUpdateCommands.SetSharedComponent(entity, renderMesh);
                     PostUpdateCommands.RemoveComponent<DirtyMaterial>(entity);
                 });
 
             Entities
-                .WithAllReadOnly<Vertex, Hovered, Selected, DirtyMaterial>()
+                .WithAllReadOnly<T, Hovered, Selected, DirtyMaterial>()
                 .WithAll<RenderMesh>()
                 .ForEach(entity =>
                 {
                     var renderMesh = EntityManager.GetSharedComponentData<RenderMesh>(entity);
 
-                    renderMesh.material = hybridLevel.VertexWidgetHoverSelectedMaterial;
+                    renderMesh.material = hoverSelectedMat;
 
                     PostUpdateCommands.SetSharedComponent(entity, renderMesh);
                     PostUpdateCommands.RemoveComponent<DirtyMaterial>(entity);
                 });
 
             Entities
-                .WithAllReadOnly<Vertex, DirtyMaterial>()
+                .WithAllReadOnly<T, DirtyMaterial>()
                 .WithNone<Hovered, Selected>()
                 .WithAll<RenderMesh>()
                 .ForEach(entity =>
                 {
                     var renderMesh = EntityManager.GetSharedComponentData<RenderMesh>(entity);
 
-                    renderMesh.material = hybridLevel.VertexWidgetBaseMaterial;
+                    renderMesh.material = baseMat;
 
                     PostUpdateCommands.SetSharedComponent(entity, renderMesh);
                     PostUpdateCommands.RemoveComponent<DirtyMaterial>(entity);
                 });
+        }
+
+        protected override void OnUpdate()
+        {
+            var hybridLevel = _hybridLevel ?? (_hybridLevel = Object.FindObjectOfType<HybridLevel>());
+
+            HandleMaterials<Vertex>(
+                hybridLevel.VertexWidgetBaseMaterial,
+                hybridLevel.VertexWidgetHoverMaterial,
+                hybridLevel.VertexWidgetSelectedMaterial,
+                hybridLevel.VertexWidgetHoverSelectedMaterial);
+
+            HandleMaterials<FloorCeiling>(
+                hybridLevel.FloorCeilingWidgetBaseMaterial,
+                hybridLevel.FloorCeilingWidgetHoverMaterial,
+                hybridLevel.FloorCeilingWidgetSelectedMaterial,
+                hybridLevel.FloorCeilingWidgetHoverSelectedMaterial);
         }
     }
 }
