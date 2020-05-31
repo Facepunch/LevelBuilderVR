@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using LevelBuilderVR.Entities;
 using Unity.Collections;
 using Unity.Entities;
@@ -40,25 +41,6 @@ namespace LevelBuilderVR.Systems
 
             var diff = new float2(a.X - b.X, a.Z - b.Z);
             return math.lengthsq(diff) <= 1f / (256f * 256f);
-        }
-
-        private void HandleBackFaceCandidate(Entity entity, Entity nextVertex, ref HalfEdge halfEdge, ComponentDataFromEntity<HalfEdge> getHalfEdge)
-        {
-            var key = new HalfEdgeVertices(halfEdge.Vertex, nextVertex);
-
-            if (_backfaceCandidates.TryGetValue(key.Complement, out var backFace))
-            {
-                halfEdge.BackFace = backFace;
-
-                var backFaceHalfEdge = getHalfEdge[backFace];
-                backFaceHalfEdge.BackFace = entity;
-                getHalfEdge[backFace] = backFaceHalfEdge;
-
-                _backfaceCandidates.Remove(key.Complement);
-                return;
-            }
-
-            _backfaceCandidates.Add(key, entity);
         }
 
         private int CountHalfEdgesInLoop(Entity first, ComponentDataFromEntity<HalfEdge> getHalfEdge)
@@ -114,7 +96,7 @@ namespace LevelBuilderVR.Systems
                     {
                         complement.BackFace = Entity.Null;
 
-                        HandleBackFaceCandidate(halfEdge.BackFace, complement.Vertex, ref complement, getHalfEdge);
+                        AddBackFaceCandidate(halfEdge.BackFace, complement.Vertex, complement);
                         getHalfEdge[halfEdge.BackFace] = complement;
                     }
                 }
@@ -165,12 +147,191 @@ namespace LevelBuilderVR.Systems
                     return (Prev.GetHashCode() * 397) ^ Next.GetHashCode();
                 }
             }
+
+            public override string ToString()
+            {
+                return $"{{ {Prev}, {Next} }}";
+            }
+        }
+
+        private struct BackFaceCandidate : IEquatable<BackFaceCandidate>, IComparable<BackFaceCandidate>
+        {
+            public readonly Entity HalfEdge;
+            public readonly float MinY;
+            public readonly float MaxY;
+
+            public BackFaceCandidate(Entity halfEdge, float minY, float maxY)
+            {
+                HalfEdge = halfEdge;
+                MinY = minY;
+                MaxY = maxY;
+            }
+
+            public bool Equals(BackFaceCandidate other)
+            {
+                return HalfEdge.Equals(other.HalfEdge);
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is BackFaceCandidate other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                return HalfEdge.GetHashCode();
+            }
+
+            public int CompareTo(BackFaceCandidate other)
+            {
+                return MinY.CompareTo(other.MinY);
+            }
+
+            public override string ToString()
+            {
+                return $"{{ Entity: {HalfEdge}, MinY: {MinY}, MaxY: {MaxY} }}";
+            }
         }
 
         private readonly List<NewRoomAssignment> _newRoomAssignments = new List<NewRoomAssignment>();
 
         private readonly Dictionary<Entity, Entity> _vertexReplacements = new Dictionary<Entity, Entity>();
-        private readonly Dictionary<HalfEdgeVertices, Entity> _backfaceCandidates = new Dictionary<HalfEdgeVertices, Entity>();
+        private readonly Dictionary<HalfEdgeVertices, List<BackFaceCandidate>> _backfaceCandidates = new Dictionary<HalfEdgeVertices, List<BackFaceCandidate>>();
+        private readonly List<List<BackFaceCandidate>> _backfaceCandidateListPool = new List<List<BackFaceCandidate>>();
+
+        private void ClearBackfaceCandidates()
+        {
+            foreach (var pair in _backfaceCandidates)
+            {
+                _backfaceCandidateListPool.Add(pair.Value);
+            }
+
+            _backfaceCandidates.Clear();
+        }
+
+        private void HandleBackfaceCandidate(List<BackFaceCandidate> setA, List<BackFaceCandidate> setB, ref int indexA, ref int indexB, ComponentDataFromEntity<HalfEdge> getHalfEdge)
+        {
+            var firstIndexA = indexA;
+            var firstIndexB = indexB;
+
+            var a = setA[indexA++];
+            var maxY = a.MaxY;
+
+            // Taking first item from setA, check to see what overlaps it from both setA and setB.
+            // Expand overlapping area each time.
+
+            while (indexA < setA.Count || indexB < setB.Count)
+            {
+                var minA = indexA < setA.Count ? setA[indexA].MinY : float.PositiveInfinity;
+                var minB = indexB < setB.Count ? setB[indexB].MinY : float.PositiveInfinity;
+
+                if (minA >= maxY && minB >= maxY)
+                {
+                    break;
+                }
+
+                maxY = Math.Max(maxY, minA <= minB
+                    ? setA[indexA++].MaxY
+                    : setB[indexB++].MaxY);
+            }
+
+            // Can only resolve a 1:1 matching of overlapping candidates, anything else is skipped.
+
+            if (indexA - firstIndexA != 1 || indexB - firstIndexB != 1)
+            {
+                return;
+            }
+
+            var b = setB[firstIndexB];
+
+            var halfEdgeA = getHalfEdge[a.HalfEdge];
+            var halfEdgeB = getHalfEdge[b.HalfEdge];
+
+            halfEdgeA.BackFace = b.HalfEdge;
+            halfEdgeB.BackFace = a.HalfEdge;
+
+            getHalfEdge[a.HalfEdge] = halfEdgeA;
+            getHalfEdge[b.HalfEdge] = halfEdgeB;
+        }
+
+        private void HandleBackfaceCandidates(List<BackFaceCandidate> setA, List<BackFaceCandidate> setB, ComponentDataFromEntity<HalfEdge> getHalfEdge)
+        {
+            // Sort by MinY
+            setA.Sort();
+            setB.Sort();
+
+            var indexA = 0;
+            var indexB = 0;
+
+            while (indexA < setA.Count && indexB < setB.Count)
+            {
+                var firstA = setA[indexA];
+                var firstB = setB[indexB];
+
+                if (firstA.MinY <= firstB.MinY)
+                {
+                    HandleBackfaceCandidate(setA, setB, ref indexA, ref indexB, getHalfEdge);
+                }
+                else
+                {
+                    HandleBackfaceCandidate(setB, setA, ref indexB, ref indexA, getHalfEdge);
+                }
+            }
+        }
+
+        private void HandleBackfaceCandidates(ComponentDataFromEntity<HalfEdge> getHalfEdge)
+        {
+            while (_backfaceCandidates.Count > 0)
+            {
+                var firstPair = _backfaceCandidates.First();
+
+                _backfaceCandidates.Remove(firstPair.Key);
+                _backfaceCandidateListPool.Add(firstPair.Value);
+
+                var complementKey = firstPair.Key.Complement;
+
+                if (!_backfaceCandidates.TryGetValue(complementKey, out var complementValue))
+                {
+                    continue;
+                }
+
+                _backfaceCandidates.Remove(complementKey);
+                _backfaceCandidateListPool.Add(complementValue);
+
+                HandleBackfaceCandidates(firstPair.Value, complementValue, getHalfEdge);
+            }
+        }
+
+        private void AddBackFaceCandidate(Entity entity, Entity nextVertex, HalfEdge halfEdge)
+        {
+            var key = new HalfEdgeVertices(halfEdge.Vertex, nextVertex);
+
+            if (!_backfaceCandidates.TryGetValue(key, out var list))
+            {
+                if (_backfaceCandidateListPool.Count > 0)
+                {
+                    list = _backfaceCandidateListPool[_backfaceCandidateListPool.Count - 1];
+                    _backfaceCandidateListPool.RemoveAt(_backfaceCandidateListPool.Count - 1);
+
+                    list.Clear();
+                }
+                else
+                {
+                    list = new List<BackFaceCandidate>();
+                }
+
+                _backfaceCandidates.Add(key, list);
+            }
+
+            var candidate = new BackFaceCandidate(entity, halfEdge.MinY, halfEdge.MaxY);
+
+            if (list.Contains(candidate))
+            {
+                return;
+            }
+
+            list.Add(candidate);
+        }
 
         protected override void OnUpdate()
         {
@@ -190,7 +351,8 @@ namespace LevelBuilderVR.Systems
                     // Find unmoved vertices that overlap with a moved vertex
 
                     _vertexReplacements.Clear();
-                    _backfaceCandidates.Clear();
+
+                    ClearBackfaceCandidates();
 
                     _selectedVertices.SetSharedComponentFilter(withinLevel);
                     _unselectedVertices.SetSharedComponentFilter(withinLevel);
@@ -252,7 +414,7 @@ namespace LevelBuilderVR.Systems
                             if (_vertexReplacements.TryGetValue(next.Vertex, out var nextVertex))
                             {
                                 backfaceCandidate = true;
-                            }
+                            } 
                             else
                             {
                                 nextVertex = next.Vertex;
@@ -260,10 +422,12 @@ namespace LevelBuilderVR.Systems
 
                             if (!backfaceCandidate || halfEdge.BackFace != Entity.Null) return;
 
-                            HandleBackFaceCandidate(entity, nextVertex, ref halfEdge, getHalfEdge);
+                            AddBackFaceCandidate(entity, nextVertex, halfEdge);
                         });
 
                     _vertexReplacements.Clear();
+
+                    HandleBackfaceCandidates(getHalfEdge);
 
                     // If two vertices of a room have been merged, the room will need to
                     // either be split in two, or some HalfEdges will need to be removed
@@ -334,7 +498,7 @@ namespace LevelBuilderVR.Systems
                         var oldRoomHalfEdge = entBeforeFirst;
                         var newRoomHalfEdge = entFirst;
 
-                        _backfaceCandidates.Clear();
+                        ClearBackfaceCandidates();
 
                         if (oldRoomCount < 3 && newRoomCount < 3)
                         {
@@ -365,6 +529,8 @@ namespace LevelBuilderVR.Systems
                                 OldRoom = oldRoom
                             });
                         }
+
+                        HandleBackfaceCandidates(getHalfEdge);
                     }
 
                     // Find out which vertices are still referenced
