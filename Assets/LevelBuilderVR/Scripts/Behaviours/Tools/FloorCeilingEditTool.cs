@@ -1,4 +1,4 @@
-﻿
+﻿using System.Collections.Generic;
 using LevelBuilderVR.Entities;
 using Unity.Collections;
 using Unity.Entities;
@@ -17,6 +17,7 @@ namespace LevelBuilderVR.Behaviours.Tools
             public bool IsActionHeld;
             public bool IsDragging;
             public bool IsDeselecting;
+            public bool HasExtruded;
             public float3 DragOrigin;
             public float3 DragApplied;
         }
@@ -25,6 +26,8 @@ namespace LevelBuilderVR.Behaviours.Tools
         private Vector3 _gridOrigin;
 
         public ushort HapticPulseDurationMicros = 500;
+
+        public bool Extrude;
 
         private EntityQuery _getSelectedFloorCeilings;
 
@@ -216,13 +219,98 @@ namespace LevelBuilderVR.Behaviours.Tools
                 {
                     EntityManager.SetSelected(state.HoveredFloorCeiling, true);
                 }
+                else
+                {
+                    return;
+                }
             }
 
             state.IsDragging = true;
+            state.HasExtruded = false;
             state.DragOrigin = handPos;
             state.DragApplied = float3.zero;
 
             HybridLevel.SetDragOffset(-state.DragApplied);
+        }
+
+        private readonly Dictionary<Entity, Entity> _newHalfEdges = new Dictionary<Entity, Entity>();
+
+        private void StartExtrude(bool up, ref HandState state)
+        {
+            state.HasExtruded = true;
+
+            var halfEdges = new TempEntitySet(SetAccess.Enumerate);
+            var srcFloorCeilings = _getSelectedFloorCeilings.ToEntityArray(Allocator.TempJob);
+
+            foreach (var srcFloorCeilingEnt in srcFloorCeilings)
+            {
+                var srcFloorCeiling = EntityManager.GetComponentData<FloorCeiling>(srcFloorCeilingEnt);
+                var newRoomEnt = EntityManager.CreateRoom(Level);
+
+                var newFloorCeilingEnt = EntityManager.CreateFloorCeiling(Level, srcFloorCeiling.Plane,
+                    !up ? newRoomEnt : srcFloorCeiling.Above, up ? newRoomEnt : srcFloorCeiling.Below);
+
+                if (up)
+                {
+                    if (srcFloorCeiling.Above != Entity.Null)
+                    {
+                        var aboveRoom = EntityManager.GetComponentData<Room>(srcFloorCeiling.Above);
+                        aboveRoom.Floor = newFloorCeilingEnt;
+                        EntityManager.SetComponentData(srcFloorCeiling.Above, aboveRoom);
+                    }
+
+                    srcFloorCeiling.Above = newRoomEnt;
+                }
+                else
+                {
+                    if (srcFloorCeiling.Below != Entity.Null)
+                    {
+                        var belowRoom = EntityManager.GetComponentData<Room>(srcFloorCeiling.Below);
+                        belowRoom.Ceiling = newFloorCeilingEnt;
+                        EntityManager.SetComponentData(srcFloorCeiling.Below, belowRoom);
+                    }
+
+                    srcFloorCeiling.Below = newRoomEnt;
+                }
+
+                EntityManager.SetComponentData(srcFloorCeilingEnt, srcFloorCeiling);
+
+                EntityManager.SetComponentData(newRoomEnt, new Room
+                {
+                    Floor = !up ? newFloorCeilingEnt : srcFloorCeilingEnt,
+                    Ceiling = up ? newFloorCeilingEnt : srcFloorCeilingEnt
+                });
+
+                halfEdges.Clear();
+
+                EntityManager.FindRoomHalfEdges(up ? srcFloorCeiling.Below : srcFloorCeiling.Above, halfEdges);
+
+                _newHalfEdges.Clear();
+
+                foreach (var halfEdgeEnt in halfEdges)
+                {
+                    var halfEdge = EntityManager.GetComponentData<HalfEdge>(halfEdgeEnt);
+                    _newHalfEdges.Add(halfEdgeEnt, EntityManager.CreateHalfEdge(newRoomEnt, halfEdge.Vertex));
+                }
+
+                foreach (var srcHalfEdgeEnt in halfEdges)
+                {
+                    var dstHalfEdgeEnt = _newHalfEdges[srcHalfEdgeEnt];
+
+                    var srcHalfEdge = EntityManager.GetComponentData<HalfEdge>(srcHalfEdgeEnt);
+                    var dstHalfEdge = EntityManager.GetComponentData<HalfEdge>(dstHalfEdgeEnt);
+
+                    dstHalfEdge.Next = _newHalfEdges[srcHalfEdge.Next];
+
+                    EntityManager.SetComponentData(dstHalfEdgeEnt, dstHalfEdge);
+                }
+
+                EntityManager.SetSelected(srcFloorCeilingEnt, false);
+                EntityManager.SetSelected(newFloorCeilingEnt, true);
+            }
+
+            srcFloorCeilings.Dispose();
+            halfEdges.Dispose();
         }
 
         private void UpdateDragging(Hand hand, float3 handPos, ref HandState state)
@@ -237,6 +325,11 @@ namespace LevelBuilderVR.Behaviours.Tools
             if (math.lengthsq(intOffset) <= 0)
             {
                 return;
+            }
+
+            if (Extrude && !state.HasExtruded)
+            {
+                StartExtrude(intOffset.y > 0, ref state);
             }
 
             offset = new float3(intOffset) * GridSnap;
@@ -278,6 +371,7 @@ namespace LevelBuilderVR.Behaviours.Tools
             }
 
             state.IsDragging = false;
+            state.HasExtruded = false;
         }
     }
 }

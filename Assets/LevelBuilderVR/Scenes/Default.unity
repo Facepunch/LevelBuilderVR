@@ -559,6 +559,7 @@ GameObject:
   - component: {fileID: 1542598995}
   - component: {fileID: 1542599000}
   - component: {fileID: 1542598997}
+  - component: {fileID: 1542598998}
   m_Layer: 0
   m_Name: PlayerSetup
   m_TagString: Untagged
@@ -686,6 +687,36 @@ MonoBehaviour:
   GridSnapTargetResolution: 0.01
   InteractRadius: 0.05
   HapticPulseDurationMicros: 500
+  Extrude: 0
+--- !u!114 &1542598998
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1542598992}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9ef537a00a9bb784183376d1a7842fd9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  UseToolAction:
+    actionPath: /actions/default/in/UseTool
+    needsReinit: 0
+  MultiSelectAction:
+    actionPath: /actions/default/in/MultiSelect
+    needsReinit: 0
+  AxisAlignAction:
+    actionPath: /actions/default/in/AxisAlign
+    needsReinit: 0
+  Label: Floor / Ceiling Extrude
+  Icon: {fileID: 21300000, guid: 112b0e167ac3a3e4dbd645786e00f0e3, type: 3}
+  LeftHandActive: 0
+  RightHandActive: 0
+  GridSnapTargetResolution: 0.01
+  InteractRadius: 0.05
+  HapticPulseDurationMicros: 500
+  Extrude: 1
 --- !u!114 &1542599000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1227,13 +1258,16 @@ MonoBehaviour:
     type: 3}
   VertexWidgetBaseMaterial: {fileID: 2100000, guid: 16469bd2c8164f949b69a8ca531d74e7,
     type: 2}
-  FloorCeilingWidgetBaseMaterial: {fileID: 2100000, guid: aa2994a7cf4653e4a87de403eb519d2f,
-    type: 2}
-  ExtrudeWidget: {fileID: 1739482963}
   VertexWidgetHoverMaterial: {fileID: 2100000, guid: 03dbfe5b12bc14145978c603588e58ed,
     type: 2}
   VertexWidgetSelectedMaterial: {fileID: 0}
   VertexWidgetHoverSelectedMaterial: {fileID: 0}
+  FloorCeilingWidgetBaseMaterial: {fileID: 2100000, guid: aa2994a7cf4653e4a87de403eb519d2f,
+    type: 2}
+  FloorCeilingWidgetHoverMaterial: {fileID: 0}
+  FloorCeilingWidgetSelectedMaterial: {fileID: 0}
+  FloorCeilingWidgetHoverSelectedMaterial: {fileID: 0}
+  ExtrudeWidget: {fileID: 1739482963}
   FilePath: Testing.level
   GridGuide: {fileID: 701909644}
 --- !u!4 &2143160709

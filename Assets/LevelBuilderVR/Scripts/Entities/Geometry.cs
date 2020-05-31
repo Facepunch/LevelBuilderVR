@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using LevelBuilderVR.Behaviours;
 using Unity.Collections;
@@ -14,6 +13,27 @@ namespace LevelBuilderVR.Entities
         private static HybridLevel _sHybridLevel;
 
         private static HybridLevel HybridLevel => _sHybridLevel ?? (_sHybridLevel = Object.FindObjectOfType<HybridLevel>());
+
+        public static int FindRoomHalfEdges(this EntityManager em, Entity room, TempEntitySet outHalfEdges)
+        {
+            var withinLevel = em.GetSharedComponentData<WithinLevel>(room);
+
+            var count = 0;
+
+            _sHalfEdgesQuery.SetSharedComponentFilter(withinLevel);
+            using (var halfEdges = _sHalfEdgesQuery.ToComponentDataArray<HalfEdge>(Allocator.TempJob))
+            {
+                foreach (var halfEdge in halfEdges)
+                {
+                    if (halfEdge.Room == room && outHalfEdges.Add(halfEdge.Next))
+                    {
+                        ++count;
+                    }
+                }
+            }
+
+            return count;
+        }
 
         public static bool FindClosestVertex(this EntityManager em, Entity level, float3 localPos,
             out Entity outEntity, out float3 outClosestPoint)
@@ -118,10 +138,14 @@ namespace LevelBuilderVR.Entities
 
             return outEntity != Entity.Null;
         }
-
-        public static HalfLoopVertexPairEnumerable EnumerateVertexPairsInHalfLoop(this EntityManager em, Entity first)
+        public static HalfEdgeLoopEnumerable EnumerateHalfEdgeLoop(this EntityManager em, Entity first)
         {
-            return new HalfLoopVertexPairEnumerable(em, first);
+            return new HalfEdgeLoopEnumerable(em, first);
+        }
+
+        public static HalfEdgeLoopVertexPairEnumerable EnumerateVertexPairsInHalfEdgeLoop(this EntityManager em, Entity first)
+        {
+            return new HalfEdgeLoopVertexPairEnumerable(em, first);
         }
 
         public static bool IsPointWithinHalfEdgeLoop(this EntityManager em, Entity first, float3 localPos)
@@ -133,7 +157,7 @@ namespace LevelBuilderVR.Entities
 
             var np = math.dot(n, p);
 
-            foreach (var pair in em.EnumerateVertexPairsInHalfLoop(first))
+            foreach (var pair in em.EnumerateVertexPairsInHalfEdgeLoop(first))
             {
                 var a = new float2(pair.Prev.X, pair.Prev.Z);
                 var b = new float2(pair.Next.X, pair.Next.Z);

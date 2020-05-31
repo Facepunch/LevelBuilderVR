@@ -74,7 +74,110 @@ namespace LevelBuilderVR
         }
     }
 
-    public struct HalfLoopVertexPairEnumerable : IEnumerable<VertexPair>
+    public struct HalfEdgeEntity : IEquatable<HalfEdgeEntity>
+    {
+        public readonly HalfEdge HalfEdge;
+        public readonly Entity Entity;
+
+        public HalfEdgeEntity(HalfEdge halfEdge, Entity entity)
+        {
+            HalfEdge = halfEdge;
+            Entity = entity;
+        }
+
+        public bool Equals(HalfEdgeEntity other)
+        {
+            return HalfEdge.Equals(other.HalfEdge) && Entity.Equals(other.Entity);
+        }
+
+        public override bool Equals(object obj)
+        {
+            return obj is HalfEdgeEntity other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                return (HalfEdge.GetHashCode() * 397) ^ Entity.GetHashCode();
+            }
+        }
+    }
+
+    public struct HalfEdgeLoopEnumerable : IEnumerable<HalfEdgeEntity>
+    {
+        public struct Enumerator : IEnumerator<HalfEdgeEntity>
+        {
+            private readonly EntityManager _em;
+            private readonly Entity _entFirst;
+
+            private Entity _entNext;
+            private bool _first;
+
+            private HalfEdgeEntity _current;
+
+            public Enumerator(EntityManager em, Entity first)
+            {
+                _em = em;
+                _entFirst = first;
+
+                _current = default;
+                _entNext = _entFirst;
+                _first = true;
+            }
+
+            public void Reset()
+            {
+                _current = default;
+                _entNext = _entFirst;
+                _first = true;
+            }
+
+            public bool MoveNext()
+            {
+                var heNext = _em.GetComponentData<HalfEdge>(_entNext);
+                var wasFirst = _first;
+
+                _current = new HalfEdgeEntity(heNext, _entNext);
+                _entNext = heNext.Next;
+                _first = false;
+
+                return _first || _current.Entity != _entFirst;
+            }
+
+            public HalfEdgeEntity Current => _current;
+
+            object IEnumerator.Current => Current;
+
+            public void Dispose() { }
+        }
+
+        private readonly EntityManager _em;
+        private readonly Entity _entFirst;
+
+        public HalfEdgeLoopEnumerable(EntityManager em, Entity first)
+        {
+            _em = em;
+            _entFirst = first;
+        }
+
+        public Enumerator GetEnumerator()
+        {
+            return new Enumerator(_em, _entFirst);
+        }
+
+        IEnumerator<HalfEdgeEntity> IEnumerable<HalfEdgeEntity>.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+    }
+
+    public struct HalfEdgeLoopVertexPairEnumerable : IEnumerable<VertexPair>
     {
         public struct Enumerator : IEnumerator<VertexPair>
         {
@@ -134,7 +237,7 @@ namespace LevelBuilderVR
         private readonly EntityManager _em;
         private readonly Entity _entFirst;
 
-        public HalfLoopVertexPairEnumerable(EntityManager em, Entity first)
+        public HalfEdgeLoopVertexPairEnumerable(EntityManager em, Entity first)
         {
             _em = em;
             _entFirst = first;

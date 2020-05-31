@@ -302,6 +302,10 @@ namespace LevelBuilderVR.Behaviours.Tools
                 {
                     EntityManager.SetSelected(state.HoveredVertex, true);
                 }
+                else
+                {
+                    return;
+                }
             }
 
             state.IsDragging = true;
