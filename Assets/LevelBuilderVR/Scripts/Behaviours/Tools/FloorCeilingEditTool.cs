@@ -301,8 +301,15 @@ namespace LevelBuilderVR.Behaviours.Tools
                     var dstHalfEdge = EntityManager.GetComponentData<HalfEdge>(dstHalfEdgeEnt);
 
                     dstHalfEdge.Next = _newHalfEdges[srcHalfEdge.Next];
+                    dstHalfEdge.Above = up ? srcHalfEdge.Above : srcHalfEdgeEnt;
+                    dstHalfEdge.Below = !up ? srcHalfEdge.Below : srcHalfEdgeEnt;
 
                     EntityManager.SetComponentData(dstHalfEdgeEnt, dstHalfEdge);
+
+                    srcHalfEdge.Above = up ? dstHalfEdgeEnt : srcHalfEdge.Above;
+                    srcHalfEdge.Below = !up ? dstHalfEdgeEnt : srcHalfEdge.Below;
+
+                    EntityManager.SetComponentData(srcHalfEdgeEnt, srcHalfEdge);
                 }
 
                 EntityManager.SetSelected(srcFloorCeilingEnt, false);

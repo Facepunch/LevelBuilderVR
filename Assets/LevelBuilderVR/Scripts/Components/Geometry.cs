@@ -96,6 +96,9 @@ namespace LevelBuilderVR
         /// </summary>
         public Entity BackFace;
 
+        public Entity Above;
+        public Entity Below;
+
         public float MinY;
         public float MaxY;
     }

@@ -98,7 +98,9 @@ namespace LevelBuilderVR.Entities
                     { "room", em.GetIdentifierString(halfEdge.Room) },
                     { "vertex", em.GetIdentifierString(halfEdge.Vertex) },
                     { "next", em.GetIdentifierString(halfEdge.Next) },
-                    { "backFace", em.GetIdentifierString(halfEdge.BackFace) }
+                    { "backFace", em.GetIdentifierString(halfEdge.BackFace) },
+                    { "above", em.GetIdentifierString(halfEdge.Above) },
+                    { "below", em.GetIdentifierString(halfEdge.Below) }
                 });
             }
 
@@ -265,7 +267,9 @@ namespace LevelBuilderVR.Entities
                     Room = rooms.FindEntity(pair.JObject["room"]),
                     Vertex = vertices.FindEntity(pair.JObject["vertex"]),
                     Next = halfEdges.FindEntity(pair.JObject["next"]),
-                    BackFace = halfEdges.FindEntity(pair.JObject["backFace"])
+                    BackFace = halfEdges.FindEntity(pair.JObject["backFace"]),
+                    Above = halfEdges.FindEntity(pair.JObject["above"]),
+                    Below = halfEdges.FindEntity(pair.JObject["below"])
                 });
             }
 

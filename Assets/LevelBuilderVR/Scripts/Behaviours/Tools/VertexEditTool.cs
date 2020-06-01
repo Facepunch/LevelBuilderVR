@@ -220,7 +220,33 @@ namespace LevelBuilderVR.Behaviours.Tools
                 math.round(virtualVertex.X / GridSnap) * GridSnap,
                 math.round(virtualVertex.Z / GridSnap) * GridSnap);
 
-            EntityManager.InsertHalfEdge(state.HoveredHalfEdge, newVertex);
+            var halfEdgeStack = new TempEntitySet(SetAccess.Enumerate);
+
+            EntityManager.FindAllStackedHalfEdges(state.HoveredHalfEdge, halfEdgeStack);
+
+            var newHalfEdges = new NativeArray<Entity>(halfEdgeStack.Count, Allocator.TempJob);
+
+            for (var i = 0; i < halfEdgeStack.Count; ++i)
+            {
+                newHalfEdges[i] = EntityManager.InsertHalfEdge(halfEdgeStack[i], newVertex);
+            }
+
+            if (newHalfEdges.Length > 1)
+            {
+                for (var i = 0; i < newHalfEdges.Length; ++i)
+                {
+                    var halfEdge = EntityManager.GetComponentData<HalfEdge>(newHalfEdges[i]);
+
+                    if (i > 0) halfEdge.Below = newHalfEdges[i - 1];
+                    if (i < newHalfEdges.Length - 1) halfEdge.Above = newHalfEdges[i + 1];
+
+                    EntityManager.SetComponentData(newHalfEdges[i], halfEdge);
+                }
+            }
+
+            halfEdgeStack.Dispose();
+            newHalfEdges.Dispose();
+
             EntityManager.SetHovered(newVertex, true);
 
             state.HoveredVertex = newVertex;

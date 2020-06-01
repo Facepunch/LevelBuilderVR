@@ -249,5 +249,71 @@ namespace LevelBuilderVR.Entities
 
             return outFloorCeiling != Entity.Null;
         }
+
+        public static Entity GetBottomRoomOfStack(this EntityManager em, Entity room)
+        {
+            while (room != Entity.Null)
+            {
+                var roomData = em.GetComponentData<Room>(room);
+                if (roomData.Floor == Entity.Null) break;
+
+                var floor = em.GetComponentData<FloorCeiling>(roomData.Floor);
+                if (floor.Below == Entity.Null) break;
+
+                room = floor.Below;
+            }
+
+            return room;
+        }
+
+        public static int FindAllStackedRooms(this EntityManager em, Entity firstRoom, TempEntitySet outRooms)
+        {
+            var count = 0;
+            var room = em.GetBottomRoomOfStack(firstRoom);
+
+            while (room != Entity.Null)
+            {
+                ++count;
+                outRooms.Add(room);
+
+                var roomData = em.GetComponentData<Room>(room);
+                if (roomData.Ceiling == Entity.Null) break;
+
+                var ceiling = em.GetComponentData<FloorCeiling>(roomData.Ceiling);
+                room = ceiling.Above;
+            }
+
+            return count;
+        }
+
+        public static Entity GetBottomHalfEdgeOfStack(this EntityManager em, Entity halfEdge)
+        {
+            while (halfEdge != Entity.Null)
+            {
+                var halfEdgeData = em.GetComponentData<HalfEdge>(halfEdge);
+                if (halfEdgeData.Below == Entity.Null) break;
+
+                halfEdge = halfEdgeData.Below;
+            }
+
+            return halfEdge;
+        }
+
+        public static int FindAllStackedHalfEdges(this EntityManager em, Entity firstHalfEdge, TempEntitySet outHalfEdges)
+        {
+            var count = 0;
+            var halfEdge = em.GetBottomHalfEdgeOfStack(firstHalfEdge);
+
+            while (halfEdge != Entity.Null)
+            {
+                ++count;
+                outHalfEdges.Add(halfEdge);
+
+                var halfEdgeData = em.GetComponentData<HalfEdge>(halfEdge);
+                halfEdge = halfEdgeData.Above;
+            }
+
+            return count;
+        }
     }
 }
